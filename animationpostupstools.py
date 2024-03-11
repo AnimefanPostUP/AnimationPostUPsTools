@@ -83,28 +83,131 @@ class Bonery_PT_CorePanel(bpy.types.Panel):
         row = layout.row()
         row.prop(settingsdata, "flicktimeline")
         
-        row = layout.row()
-        row.operator(Bonery_OT_printcoordinates.bl_idname, text="Print Coordinates")
+        if(settingsdata.debuggingsubmenu):
+            row = layout.box()
+            row.operator(Bonery_OT_printcoordinates.bl_idname, text="Print Coordinates").operationtype=0
+            row.operator(Bonery_OT_printcoordinates.bl_idname, text="Setup Bone").operationtype=1
+            row.operator(Bonery_OT_printcoordinates.bl_idname, text="Print Animated Coordinates").operationtype=2
+            row.operator(Bonery_OT_printcoordinates.bl_idname, text="Apply Animation").operationtype=3
+            row.operator(Bonery_OT_printcoordinates.bl_idname, text="Print Coordinates").operationtype=4
 
 class Bonery_OT_printcoordinates(bpy.types.Operator):
     """Operator to print the vertex positions of the selected object"""
     bl_idname = "bonery.print_coordinates"
     bl_label = "Print Vertex Coordinates"
+    operationtype : bpy.props.IntProperty(name="operationtype", default=0)
     
     def execute(self, context):
-        # Get the selected object
-        obj = context.object
-        
-        # Check if the selected object is a mesh
-        if obj and obj.type == 'MESH':
-            # Get the mesh data
-            mesh = obj.data
+        if self.operationtype == 0:
+            print("Operationtype 0")
+            debug_write_vertex_coordinated(self, context)
             
-            # Iterate over all vertices and print their positions
-            for vertex in mesh.vertices:
-                print(f"Vertex {vertex.index}: {vertex.co}")
+        if self.operationtype == 1:
+            print("Operationtype 1")
+            debug_setupBone(self, context)
+            
+        if self.operationtype == 2:
+            print("Operationtype 2")
+            debug_print_vertex_withBoneAnimation(self, context)
+            
+        if self.operationtype == 3:
+            print("Operationtype 3")
+            debug_print_applyAnimation(self, context)
+            
+        if self.operationtype == 4:
+            print("Operationtype 4")
+            debug_write_vertex_coordinated(self, context)
         
         return {'FINISHED'}
+
+
+def debug_write_vertex_coordinated(self, context):
+        # Get the selected object
+    obj = context.object
+    
+    # Check if the selected object is a mesh
+    if obj and obj.type == 'MESH':
+        # Get the mesh data
+        mesh = obj.data
+        
+        # Iterate over all vertices and print their positions
+        for vertex in mesh.vertices:
+            print(f"Vertex {vertex.index}: {vertex.co}")
+            
+def debug_setupBone(self, context):
+    # Get the selected object
+    obj = context.object
+    
+    armature = createArmatureifNotExists(bpy.context, obj)
+    centerposition = convert_to_armature_space(armature, Vector((0, 0, 0)), obj)
+    groupname, group= createIncrementedVertexgroupIfNotExists(obj, "root_base")
+    bone = createBoneifNotExists(armature, groupname, centerposition)
+    vertex_indices = getAllVertexIndices(obj)
+    applyVertexgroupToMesh(obj, groupname, vertex_indices)
+    
+    # Check if the selected object is a mesh
+    if obj and obj.type == 'MESH':
+        # Get the mesh data
+        mesh = obj.data
+        
+        # Iterate over all vertices and print their positions
+        for vertex in mesh.vertices:
+            # Apply the bone's matrix to the vertex position
+            transformed_position = bone.matrix @ vertex.co
+            print(f"Vertex {vertex.index}: {transformed_position}")
+
+def debug_print_vertex_withBoneAnimation(self, context):
+    # Get the selected object
+    obj = context.object
+    if obj and obj.type == 'MESH':
+        armature = createArmatureifNotExists(bpy.context, obj)
+        centerposition = convert_to_armature_space(armature, Vector((0, 0, 0)), obj)
+        groupname, group= createIncrementedVertexgroupIfNotExists(obj, "root_base")
+        bone = createBoneifNotExists(armature, groupname, centerposition)
+        vertex_indices = getAllVertexIndices(obj)
+        applyVertexgroupToMesh(obj, groupname, vertex_indices)
+        matrix=getMatrixOfAnimation_PoseBonespace(obj, armature, group)
+        
+        positions = getPositionFromIndices(obj, vertex_indices)
+        
+        animated_positions=multiply_matrix(matrix, positions)
+        print ("Single Bone Animation: "+str(animated_positions))
+        
+        fullyanimated_positions=apply_transformations (obj, armature, vertex_indices, animated_positions)
+        print ("Full Animation: "+str(fullyanimated_positions))
+        
+def debug_print_applyAnimation(self, context):
+    # Get the selected object
+    obj = context.object
+    if obj and obj.type == 'MESH':
+        armature = createArmatureifNotExists(bpy.context, obj)
+        centerposition = convert_to_armature_space(armature, Vector((0, 0, 0)), obj)
+        groupname, group= createIncrementedVertexgroupIfNotExists(obj, "root_base")
+        bone = createBoneifNotExists(armature, groupname, centerposition)
+        vertex_indices = getAllVertexIndices(obj)
+        applyVertexgroupToMesh(obj, groupname, vertex_indices)
+        matrix=getMatrixOfAnimation_PoseBonespace(obj, armature, group)
+        
+        positions = getPositionFromIndices(obj, vertex_indices)
+        
+        animated_positions=multiply_matrix(matrix, positions)
+        print ("Single Bone Animation: "+str(animated_positions))
+        
+        fullyanimated_positions=apply_transformations (obj, armature, vertex_indices, animated_positions)
+        print ("Full Animation: "+str(fullyanimated_positions))
+        
+        set_vertex_positions_4dsafe(obj, vertex_indices, fullyanimated_positions)
+        removeArmatureAndVertexgroups (obj, armature)
+        set_vertex_positions_4dsafe(obj, vertex_indices, fullyanimated_positions)
+        
+        
+        
+        
+        
+
+        
+        
+
 
 
 #Change Detection    
@@ -141,8 +244,6 @@ def detect_vertexchanges_of_group( keydata_previous, keydata_current, group_name
                         changed_vertices["old_positions"].append(previous_vertices[vertex_id])
                         changed_vertices["new_positions"].append(current_vertices[vertex_id])
     return changed_vertices
-
-
 
 #Important Getters
 def get_current_keydata(context):
@@ -281,7 +382,60 @@ def writeKeydata(keydata):
             vertex_position_data =  create_vertexpositiondata(vertex_group_data, vertex_index, vertex.co)
 
 
+
+def removeArmatureAndVertexgroups(obj, armature):
+    # Check if the armature is the parent of the object
+    if obj.parent == armature:
+        # Remove the parent-child relationship
+        obj.parent = None
+        obj.matrix_parent_inverse = armature.matrix_world.inverted()
+    
+    # Remove all vertex groups associated with the object
+    remove_vertex_groups(obj)
+    
+    # Remove the armature object
+    bpy.data.objects.remove(armature, do_unlink=True)
+
 #Autocreate Bones/Armatures (Bonefunctions need to be merged)
+def apply_transformations(obj, armature, vertex_indices, positions):
+    # Create a copy of the positions list to store the transformed positions
+    transformed_positions = positions.copy()
+    
+    # Get the armature's pose bones
+    pose_bones = armature.pose.bones
+    
+    # Iterate over the vertex indices and positions
+    for i, vertex_index in enumerate(vertex_indices):
+        # Get the vertex position
+        vertex_position = positions[i]
+        
+        # Convert the vertex position to armature space
+        vertex_position_armature_space = convert_to_armature_space(armature, vertex_position, obj)
+        
+        # Apply the transformations for each bone affecting the vertex
+        for bone in pose_bones:
+            # Get the vertex group associated with the bone
+            vertex_group = obj.vertex_groups.get(bone.name)
+            
+            # Check if the vertex group exists and the vertex is in the vertex group
+            if vertex_group and vertex_index in [g.group for g in obj.data.vertices[vertex_index].groups if g.group == vertex_group.index]:
+                # Get the weight of the bone affecting the vertex
+                weight = next((g.weight for g in obj.data.vertices[vertex_index].groups if g.group == vertex_group.index), 0)
+                
+                # Apply the bone's transformation to the vertex position
+                transformed_position = vertex_position_armature_space @ bone.matrix @ bone.matrix_basis.inverted()
+                
+                # Apply the weight to the transformed position
+                transformed_position *= weight
+                
+                # Convert the transformed position back to object space
+                transformed_position_object_space = armature.matrix_world @ transformed_position
+                
+                # Update the transformed position in the list
+                transformed_positions[i] = transformed_position_object_space
+    
+    # Return the transformed positions
+    return transformed_positions
 
 def createArmatureifNotExists(context, mesh):
     # Check if an armature with the same name already exists
@@ -364,6 +518,14 @@ def checkIfBoneExists(armature, bone_name):
         return None
     # Check if the bone already exists in the armature
     return bone_name in armature.data.edit_bones
+
+def removeArmatureifExists(context, mesh):
+    # Check if an armature with the same name already exists
+    armature_name = mesh.name + "_armature"
+    if armature_name in bpy.data.objects:
+        # Remove the armature object
+        bpy.data.objects.remove(bpy.data.objects[armature_name], do_unlink=True)
+        print(f"Removed armature {armature_name}.")
 
 
 #Viewport Modes
@@ -497,7 +659,29 @@ def createAnimation(obj, bone, transformation_matrix, last_frame):
     bpy.ops.object.mode_set(mode='OBJECT')
 
 
+#Vertex Group:
 
+def createVertexgroupIfNotExists(obj, group_name):
+    if group_name not in obj.vertex_groups:
+        create_vertex_group(obj, group_name)
+        
+def createIncrementedVertexgroupIfNotExists(obj, group_name):
+    if group_name not in obj.vertex_groups:
+        create_vertex_group(obj, group_name)
+        return group_name, obj.vertex_groups[group_name]
+    else:
+        create_vertex_group(obj, group_name + "_sub")
+        return group_name + "_sub", obj.vertex_groups[group_name + "_sub"]
+
+def applyVertexgroupToMesh(obj, group_name, vertex_indices):
+    for vertex_index in vertex_indices:
+        obj.vertex_groups[group_name].add([vertex_index], 1.0, 'REPLACE')
+  
+def getAllVertexIndices(obj):
+    return [vertex.index for vertex in obj.data.vertices]    
+
+def getPositionFromIndices(obj, vertex_indices):
+    return [obj.data.vertices[index].co for index in vertex_indices]
 
 def set_vertex_positions(obj, vertex_indices, positions):
     for index, vertex_index in enumerate(vertex_indices):
@@ -524,8 +708,21 @@ def set_vertex_positions_bmesh(obj, vertex_indices, positions):
 
     # Update the object
     obj.data.update()
+ 
+def set_vertex_positions_4dsafe(obj, vertex_indices, positions):
+    # Iterate over the vertex indices
+    for index, vertex_index in enumerate(vertex_indices):
+        # Get the position
+        position = positions[index]
+        
+        # Check if the position has 4 items
+        if len(position) == 4:
+            # Remove the last item
+            position = position[:3]
+        
+        # Set the vertex position
+        obj.data.vertices[vertex_index].co = position 
     
-
 #Position Conversion / getter
 
 def convert_to_armature_space(armature, position, obj):
@@ -643,10 +840,12 @@ def multiply_matrix(matrix, positions):
     return result
 
 
-
-def returnMatrixOfAnimation_Bonespace(new_positions, obj, armature, groupbone):
+#get Matrix of Animation
+def getMatrixOfAnimation_PoseBonespace(obj, armature, groupbone):
     # Get the current frame
     current_frame = bpy.context.scene.frame_current
+    
+    armaturePosMode(armature, obj)
     
     # Select the armature object
     bpy.context.view_layer.objects.active = armature
@@ -659,6 +858,8 @@ def returnMatrixOfAnimation_Bonespace(new_positions, obj, armature, groupbone):
     
     # Switch back to object mode
     bpy.ops.object.mode_set(mode='OBJECT')
+    
+    objectEditMode(obj)
     
     return pose_bone.matrix
 
@@ -1140,6 +1341,24 @@ class Settingsdata(bpy.types.PropertyGroup):
     my_property: bpy.props.StringProperty(name="My Property")
     flicktimeline: bpy.props.BoolProperty(name="Flick Timeline",description="Enable or disable flicking the timeline",default=True)
 
+
+    debuggingsubmenu: bpy.props.EnumProperty(
+        items=[
+            ('none', 'None', 'Hide Menus'),
+            ('vertexprint', 'Vertex Print', 'Print Vertexpositions'),
+            ('a', 'A', 'xxx'),
+            ('b', 'B', 'xxx'),
+            ('c', 'C', 'xxx'),
+            ('d', 'D', 'xxx'),
+            ('e', 'E', 'xxx'),
+            ('f', 'F', 'xxx'),
+            
+        ],
+        name="debugmenu",
+        description="Which type of Debugging Menu to use",
+        default='none'
+    )
+    
 class Tooldata(bpy.types.PropertyGroup):
     """Tool storage for Bonery addon"""
     my_tool: bpy.props.PointerProperty(type=bpy.types.Object, name="My Tool")
