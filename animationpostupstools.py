@@ -1,14 +1,107 @@
 import bpy
-import os
 import bmesh
-import math
 from random import uniform
 from . import bl_info
 from enum import Enum
-from bpy.types import Menu
+import math
 import mathutils
 from mathutils import Vector
+from bpy.types import Menu
 import numpy as np
+import os
+
+import importlib.util
+import re
+import glob
+
+
+# def import_functions_from_file(file_name):
+#     print("running import_functions_from_file")
+#     current_directory = os.path.dirname(__file__)
+#     file_path = os.path.join(current_directory, file_name)
+    
+#     # Load the spec and module from the file path
+#     spec = importlib.util.spec_from_file_location("module.name", file_path)
+#     module = importlib.util.module_from_spec(spec)
+#     spec.loader.exec_module(module)
+    
+#     # Use regular expression to find function definitions in the module's source
+#     with open(file_path, 'r') as file:
+#         content = file.read()
+#     function_names = re.findall(r'def\s+(\w+)\s*\(', content)
+    
+#     # Get the functions from the module
+#     functions = {name: getattr(module, name) for name in function_names if hasattr(module, name)}
+    
+#     return functions
+
+#Function Importer
+def import_function_from_file(file_name, function_name):
+    current_directory = os.path.dirname(__file__)
+    file_path = os.path.join(current_directory, file_name)
+
+    # Load the spec and module from the file path
+    spec = importlib.util.spec_from_file_location("module.name", file_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    # Import the function into the global namespace
+    globals()[function_name] = getattr(module, function_name)
+
+
+#Function Finder
+def find_function_names(file_name):
+    with open(file_name, 'r') as file:
+        content = file.read()
+    function_names = re.findall(r'def\s+(\w+)\s*\(', content)
+    return function_names
+
+#File Finder
+def find_python_files(directory):
+    file_paths = glob.glob(os.path.join(directory, "*.py"))
+    file_names = [os.path.basename(path) for path in file_paths]
+    return file_names
+
+#Code Injector
+def inject_code_from_file(file_name):
+    with open(file_name, 'r') as file:
+        code = file.read()
+    exec(code, globals())
+
+# Now you can use testfunc directly
+def sideloader():
+
+    #Functionimport:
+    print("SIDELOAD START")
+
+    #get Directory
+    current_directory = os.path.dirname(__file__)
+
+    #get Python files
+    files = find_python_files(current_directory)
+
+    #fileblacklist
+    fileblacklist = ["__init__.py", "auto_load.py", "animationpostupstools.py"]
+
+    for file in files: #Iterate Files 
+        if(file in fileblacklist):
+            print ("SIDELOAD filter: "+file)
+            continue
+        print ("SIDELOAD File: "+file)
+        full_file_path = os.path.join(current_directory, file)
+        functionnames=find_function_names(full_file_path) #Get Functionnames
+        for function_name in functionnames: #Iterate Functionnames
+            print ("SIDELOAD Function: "+file+" - "+function_name)
+            #import_function_from_file(full_file_path, function_name) #Import Function
+            inject_code_from_file (full_file_path) #Inject Code
+
+    print ("SIDELOAD END")
+
+#Tester
+sideloader()
+sideloadtester()
+
+
 
 #List Of Keydata
 class Bonery_UL_keydata(bpy.types.UIList):
@@ -90,6 +183,9 @@ class Bonery_PT_CorePanel(bpy.types.Panel):
             row.operator(Bonery_OT_printcoordinates.bl_idname, text="Print Animated Coordinates").operationtype=2
             row.operator(Bonery_OT_printcoordinates.bl_idname, text="Apply Animation").operationtype=3
             row.operator(Bonery_OT_printcoordinates.bl_idname, text="Print Coordinates").operationtype=4
+            row.operator(Bonery_OT_printcoordinates.bl_idname, text="Print Coordinates").operationtype=5
+            row.operator(Bonery_OT_sideloaderrecall.bl_idname, text="Sideloader Recall")
+
 
 class Bonery_OT_printcoordinates(bpy.types.Operator):
     """Operator to print the vertex positions of the selected object"""
@@ -118,97 +214,11 @@ class Bonery_OT_printcoordinates(bpy.types.Operator):
             print("Operationtype 4")
             debug_write_vertex_coordinated(self, context)
         
+        if self.operationtype == 5:
+            print("Operationtype 4")
+            testfunc()
+        
         return {'FINISHED'}
-
-
-def debug_write_vertex_coordinated(self, context):
-        # Get the selected object
-    obj = context.object
-    
-    # Check if the selected object is a mesh
-    if obj and obj.type == 'MESH':
-        # Get the mesh data
-        mesh = obj.data
-        
-        # Iterate over all vertices and print their positions
-        for vertex in mesh.vertices:
-            print(f"Vertex {vertex.index}: {vertex.co}")
-            
-def debug_setupBone(self, context):
-    # Get the selected object
-    obj = context.object
-    
-    armature = createArmatureifNotExists(bpy.context, obj)
-    centerposition = convert_to_armature_space(armature, Vector((0, 0, 0)), obj)
-    groupname, group= createIncrementedVertexgroupIfNotExists(obj, "root_base")
-    bone = createBoneifNotExists(armature, groupname, centerposition)
-    vertex_indices = getAllVertexIndices(obj)
-    applyVertexgroupToMesh(obj, groupname, vertex_indices)
-    
-    # Check if the selected object is a mesh
-    if obj and obj.type == 'MESH':
-        # Get the mesh data
-        mesh = obj.data
-        
-        # Iterate over all vertices and print their positions
-        for vertex in mesh.vertices:
-            # Apply the bone's matrix to the vertex position
-            transformed_position = bone.matrix @ vertex.co
-            print(f"Vertex {vertex.index}: {transformed_position}")
-
-def debug_print_vertex_withBoneAnimation(self, context):
-    # Get the selected object
-    obj = context.object
-    if obj and obj.type == 'MESH':
-        armature = createArmatureifNotExists(bpy.context, obj)
-        centerposition = convert_to_armature_space(armature, Vector((0, 0, 0)), obj)
-        groupname, group= createIncrementedVertexgroupIfNotExists(obj, "root_base")
-        bone = createBoneifNotExists(armature, groupname, centerposition)
-        vertex_indices = getAllVertexIndices(obj)
-        applyVertexgroupToMesh(obj, groupname, vertex_indices)
-        matrix=getMatrixOfAnimation_PoseBonespace(obj, armature, group)
-        
-        positions = getPositionFromIndices(obj, vertex_indices)
-        
-        animated_positions=multiply_matrix(matrix, positions)
-        print ("Single Bone Animation: "+str(animated_positions))
-        
-        fullyanimated_positions=apply_transformations (obj, armature, vertex_indices, animated_positions)
-        print ("Full Animation: "+str(fullyanimated_positions))
-        
-def debug_print_applyAnimation(self, context):
-    # Get the selected object
-    obj = context.object
-    if obj and obj.type == 'MESH':
-        armature = createArmatureifNotExists(bpy.context, obj)
-        centerposition = convert_to_armature_space(armature, Vector((0, 0, 0)), obj)
-        groupname, group= createIncrementedVertexgroupIfNotExists(obj, "root_base")
-        bone = createBoneifNotExists(armature, groupname, centerposition)
-        vertex_indices = getAllVertexIndices(obj)
-        applyVertexgroupToMesh(obj, groupname, vertex_indices)
-        matrix=getMatrixOfAnimation_PoseBonespace(obj, armature, group)
-        
-        positions = getPositionFromIndices(obj, vertex_indices)
-        
-        animated_positions=multiply_matrix(matrix, positions)
-        print ("Single Bone Animation: "+str(animated_positions))
-        
-        fullyanimated_positions=apply_transformations (obj, armature, vertex_indices, animated_positions)
-        print ("Full Animation: "+str(fullyanimated_positions))
-        
-        set_vertex_positions_4dsafe(obj, vertex_indices, fullyanimated_positions)
-        removeArmatureAndVertexgroups (obj, armature)
-        set_vertex_positions_4dsafe(obj, vertex_indices, fullyanimated_positions)
-        
-        
-        
-        
-        
-
-        
-        
-
-
 
 #Change Detection    
 def detect_vertexchanges_of_group( keydata_previous, keydata_current, group_name):
@@ -245,36 +255,6 @@ def detect_vertexchanges_of_group( keydata_previous, keydata_current, group_name
                         changed_vertices["new_positions"].append(current_vertices[vertex_id])
     return changed_vertices
 
-#Important Getters
-def get_current_keydata(context):
-    """Get the current active keydata"""
-    tool_data = context.scene.bonery_tools_data
-    if tool_data.active_keydata < len(tool_data.key_data):
-        return tool_data.key_data[tool_data.active_keydata]
-    return None
-
-def get_current_vertexgroupdata(context):
-    """Get the current active vertexgroupdata"""
-    tool_data = context.scene.bonery_tools_data
-    if tool_data.active_keydata < len(tool_data.key_data):
-        key_data = tool_data.key_data[tool_data.active_keydata]
-        if key_data.active_vertexgroupdata < len(key_data.vertex_group_data):
-            return key_data.vertex_group_data[key_data.active_vertexgroupdata]
-    return None
-
-def get_current_settingsdata(context):
-    return bpy.context.scene.bonery_settings_data
-
-
-#check if keydata to object exists and if return the index in the list
-def get_keydata_index_by_object_name(context, object_name):
-    """Get the index of the keydata with the given object name"""
-    tool_data = context.scene.bonery_tools_data
-    for index, key_data in enumerate(tool_data.key_data):
-        if key_data.object_name == object_name:
-            return index
-    return -1
-
 def create_Keydata_by_object(context, obj):
     """Create a new keydata for the given object"""
     tool_data = context.scene.bonery_tools_data 
@@ -289,60 +269,6 @@ def create_Keydata_by_object(context, obj):
     create_vertex_group(obj, "root_base")
     
     return key_data
-
-#Create 
-    
-def create_for_vertexgroupdata(keydata, group_name):
-    """Create a new vertexgroupdata for the given object"""
-    # Check if the vertexgroupdata already exists
-    for vertex_group_data in keydata.vertex_group_data:
-        if vertex_group_data.vertex_group_name == group_name:
-            return vertex_group_data
-    
-    # If the vertexgroupdata doesn't exist, create a new one
-    vertex_group_data = keydata.vertex_group_data.add()
-    vertex_group_data.vertex_group_name = group_name
-    vertex_group_data.last_frame = bpy.context.scene.frame_current  # Set the last frame to the current frame of the timeline
-    return vertex_group_data
-
-def create_vertexpositiondata(vertex_group_data, vertex_id, vertex_position):
-    """Create a new vertexpositiondata for the given object"""
-    vertex_position_data = vertex_group_data.vertex_position_data.add()
-    vertex_position_data.vertex_id = vertex_id
-    vertex_position_data.vertex_position = vertex_position
-    return vertex_position_data
-
-#Getters
-
-def get_vertexgroupdata_by_name(keydata, group_name):
-    """Get the vertexgroupdata with the given name"""
-    for vertex_group_data in keydata.vertex_group_data:
-        if vertex_group_data.vertex_group_name == group_name:
-            return vertex_group_data
-    return None
-
-def get_vertexpositiondata_by_id(vertex_group_data, vertex_id):
-    """Get the vertexpositiondata with the given ID"""
-    for vertex_position_data in vertex_group_data.vertex_position_data:
-        if vertex_position_data.vertex_id == vertex_id:
-            return vertex_position_data
-    return None
-
-#Keydata management
-
-def remove_keydata(keydata, context):
-    """Remove the given keydata from the list"""
-    tool_data = context.scene.bonery_tools_data
-    index = -1
-    for i, kd in enumerate(tool_data.key_data):
-        if kd == keydata:
-            index = i
-            break
-    if index >= 0:
-        tool_data.key_data.remove(index)
-        # Set the selection index to the previous keydata if available
-        if tool_data.active_keydata >= len(tool_data.key_data):
-            tool_data.active_keydata = len(tool_data.key_data) - 1
 
 def writeKeydata(keydata):
     """Write the keydata to the object"""
@@ -380,152 +306,6 @@ def writeKeydata(keydata):
             
             # Store vertex position data
             vertex_position_data =  create_vertexpositiondata(vertex_group_data, vertex_index, vertex.co)
-
-
-
-def removeArmatureAndVertexgroups(obj, armature):
-    # Check if the armature is the parent of the object
-    if obj.parent == armature:
-        # Remove the parent-child relationship
-        obj.parent = None
-        obj.matrix_parent_inverse = armature.matrix_world.inverted()
-    
-    # Remove all vertex groups associated with the object
-    remove_vertex_groups(obj)
-    
-    # Remove the armature object
-    bpy.data.objects.remove(armature, do_unlink=True)
-
-#Autocreate Bones/Armatures (Bonefunctions need to be merged)
-def apply_transformations(obj, armature, vertex_indices, positions):
-    # Create a copy of the positions list to store the transformed positions
-    transformed_positions = positions.copy()
-    
-    # Get the armature's pose bones
-    pose_bones = armature.pose.bones
-    
-    # Iterate over the vertex indices and positions
-    for i, vertex_index in enumerate(vertex_indices):
-        # Get the vertex position
-        vertex_position = positions[i]
-        
-        # Convert the vertex position to armature space
-        vertex_position_armature_space = convert_to_armature_space(armature, vertex_position, obj)
-        
-        # Apply the transformations for each bone affecting the vertex
-        for bone in pose_bones:
-            # Get the vertex group associated with the bone
-            vertex_group = obj.vertex_groups.get(bone.name)
-            
-            # Check if the vertex group exists and the vertex is in the vertex group
-            if vertex_group and vertex_index in [g.group for g in obj.data.vertices[vertex_index].groups if g.group == vertex_group.index]:
-                # Get the weight of the bone affecting the vertex
-                weight = next((g.weight for g in obj.data.vertices[vertex_index].groups if g.group == vertex_group.index), 0)
-                
-                # Apply the bone's transformation to the vertex position
-                transformed_position = vertex_position_armature_space @ bone.matrix @ bone.matrix_basis.inverted()
-                
-                # Apply the weight to the transformed position
-                transformed_position *= weight
-                
-                # Convert the transformed position back to object space
-                transformed_position_object_space = armature.matrix_world @ transformed_position
-                
-                # Update the transformed position in the list
-                transformed_positions[i] = transformed_position_object_space
-    
-    # Return the transformed positions
-    return transformed_positions
-
-def createArmatureifNotExists(context, mesh):
-    # Check if an armature with the same name already exists
-    bpy.ops.object.mode_set(mode='EDIT')
-    armature_name = mesh.name + "_armature"
-    if armature_name in bpy.data.objects:
-        print(f"Armature {armature_name} already exists.")
-        bpy.ops.object.mode_set(mode='OBJECT')
-        return bpy.data.objects[armature_name]
-
-    # Create a new armature data block
-    armature_data = bpy.data.armatures.new(name=armature_name)
-
-    # Create a new object associated with the armature data
-    armature_object = bpy.data.objects.new(armature_name, armature_data)
-
-    # Link the armature object to the current collection
-    context.collection.objects.link(armature_object)
-    
-    # Set the armature's location to the mesh's location
-    armature_object.location = mesh.location
-
-    # Set the armature as the parent of the mesh
-    mesh.parent = armature_object
-
-    # Add an Armature modifier to the mesh
-    armature_modifier = mesh.modifiers.new(name="Armature", type='ARMATURE')
-    armature_modifier.object = armature_object
-    armature_modifier.use_vertex_groups = True
-    armature_modifier.show_in_editmode = True
-    armature_modifier.show_on_cage = True
-    
-    print(f"Created new armature {armature_object.name} and attached it to mesh {mesh.name}.")
-    bpy.ops.object.mode_set(mode='OBJECT')
-    
-    return armature_object
-
-def getBoneifExists(armature, bone_name):
-    # Check if armature is an Armature object
-    if armature.type != 'ARMATURE':
-        return None
-
-    # Set the armature as the active object and switch to edit mode
-    bpy.context.view_layer.objects.active = armature
-    bpy.ops.object.mode_set(mode='EDIT')
-
-    # Check if the bone already exists
-    if not checkIfBoneExists(armature, bone_name):
-       return None
-
-    # Switch back to object mode
-    bpy.ops.object.mode_set(mode='OBJECT')
-
-    return armature.data.bones[bone_name]
-
-def createBoneifNotExists(armature, bone_name, position):
-    # Check if armature is an Armature object
-    if armature.type != 'ARMATURE':
-        return None
-
-    # Set the armature as the active object and switch to edit mode
-    bpy.context.view_layer.objects.active = armature
-    bpy.ops.object.mode_set(mode='EDIT')
-
-    # Check if the bone already exists
-    if not checkIfBoneExists(armature, bone_name):
-        # Create a new bone
-        new_bone = armature.data.edit_bones.new(bone_name)
-        # Set the bone's head and tail
-        new_bone.head = position
-        new_bone.tail = position + mathutils.Vector((0, 1, 0))  # Add some length to the bone in the y-direction
-
-    # Switch back to object mode
-    bpy.ops.object.mode_set(mode='OBJECT')
-
-    return armature.data.bones[bone_name]
-
-def checkIfBoneExists(armature, bone_name):
-    if armature.type != 'ARMATURE':
-        return None
-    # Check if the bone already exists in the armature
-    return bone_name in armature.data.edit_bones
-
-def removeArmatureifExists(context, mesh):
-    # Check if an armature with the same name already exists
-    armature_name = mesh.name + "_armature"
-    if armature_name in bpy.data.objects:
-        # Remove the armature object
-        bpy.data.objects.remove(bpy.data.objects[armature_name], do_unlink=True)
-        print(f"Removed armature {armature_name}.")
 
 
 #Viewport Modes
@@ -577,322 +357,7 @@ def copyAnimation(source_bone, target_bone, obj, armature):
             print("Source or target bone does not exist.")
 
 
-#Cleanup
 
-def clean_other_groups(obj, groupname, changed_vertices):
-    for vertex_group in obj.vertex_groups:
-        if vertex_group.name != groupname:
-            for vertex_id in changed_vertices["vertex_indices"]:
-                obj.vertex_groups[vertex_group.name].remove([vertex_id])
-
-def apply_transformation_to_bone(obj, bone, transformation_matrix):
-    # Convert transformation matrix from object space to bone space
-    
-    transformation_matrix = mathutils.Matrix(transformation_matrix.tolist())
-    
-    
-        
-    if bone.parent:
-        transformation_matrix_bone = bone.parent.matrix.inverted() @ transformation_matrix
-    else:
-        transformation_matrix_bone = obj.matrix_world.inverted() @ transformation_matrix
-       
-
-    # Decompose the transformation matrix into its components
-    location, rotation, scale = transformation_matrix_bone.decompose()
-
-    # Invert the rotation
-    rotation.invert()
-
-    # Recompose the transformation matrix
-    transformation_matrix_bone = mathutils.Matrix.Translation(location) @ rotation.to_matrix().to_4x4() @ mathutils.Matrix.Scale(scale[0], 4, (1, 0, 0)) @ mathutils.Matrix.Scale(scale[1], 4, (0, 1, 0)) @ mathutils.Matrix.Scale(scale[2], 4, (0, 0, 1))
-    
-    return transformation_matrix_bone 
-
-def createAnimation(obj, bone, transformation_matrix, last_frame):
-    """Create 2 keyframes for the bone based on a transformation matrix"""
-    current_frame = bpy.context.scene.frame_current
-    
-    # Get the object that the armature data belongs to
-    armature_object = bpy.data.objects[bone.id_data.name]
-
-    # Switch to pose mode to be able to animate bones
-    bpy.ops.object.mode_set(mode='POSE')
-
-    # Get the pose bone corresponding to the bone
-    pose_bone = armature_object.pose.bones.get(bone.name)
-
-    
-
-    # Convert the numpy array to a Matrix
-    #transformation_matrix = mathutils.Matrix(transformation_matrix.tolist())
-    transformation_matrix_bone=apply_transformation_to_bone (obj, bone, transformation_matrix)
-
-    # Decompose the transformation matrix
-    loc, rot, sca = transformation_matrix_bone.decompose()
-
-    # startframe=current_frame
-
-    if(last_frame ==-1):
-        startframe=current_frame
-    else:
-        startframe=last_frame
-
-    # Set the pose bone's location, rotation, and scale and insert a keyframe
-    pose_bone.keyframe_insert(data_path='location', frame=startframe+1)
-    pose_bone.keyframe_insert(data_path='rotation_quaternion', frame=startframe+1)
-    pose_bone.keyframe_insert(data_path='scale', frame=startframe+1)
-
-    # Create the second keyframe 15 frames later
-    bpy.context.scene.frame_set(current_frame + 15)
-    pose_bone.location +=loc
-    pose_bone.rotation_quaternion = pose_bone.rotation_quaternion @ rot
-    #pose_bone.rotation_quaternion = rot
-    pose_bone.scale *= sca
-    
-    
-    pose_bone.keyframe_insert(data_path='location', frame=current_frame+ 15)
-    pose_bone.keyframe_insert(data_path='rotation_quaternion', frame=current_frame+ 15)
-    pose_bone.keyframe_insert(data_path='scale', frame=current_frame+ 15)
-
-    # Switch back to object mode
-    bpy.ops.object.mode_set(mode='OBJECT')
-
-
-#Vertex Group:
-
-def createVertexgroupIfNotExists(obj, group_name):
-    if group_name not in obj.vertex_groups:
-        create_vertex_group(obj, group_name)
-        
-def createIncrementedVertexgroupIfNotExists(obj, group_name):
-    if group_name not in obj.vertex_groups:
-        create_vertex_group(obj, group_name)
-        return group_name, obj.vertex_groups[group_name]
-    else:
-        create_vertex_group(obj, group_name + "_sub")
-        return group_name + "_sub", obj.vertex_groups[group_name + "_sub"]
-
-def applyVertexgroupToMesh(obj, group_name, vertex_indices):
-    for vertex_index in vertex_indices:
-        obj.vertex_groups[group_name].add([vertex_index], 1.0, 'REPLACE')
-  
-def getAllVertexIndices(obj):
-    return [vertex.index for vertex in obj.data.vertices]    
-
-def getPositionFromIndices(obj, vertex_indices):
-    return [obj.data.vertices[index].co for index in vertex_indices]
-
-def set_vertex_positions(obj, vertex_indices, positions):
-    for index, vertex_index in enumerate(vertex_indices):
-        obj.data.vertices[vertex_index].co = positions[index]
-        
-def set_vertex_positions_bmesh(obj, vertex_indices, positions):
-    # Ensure we're in object mode
-    bpy.ops.object.mode_set(mode='OBJECT')
-
-    # Create a bmesh from the object mesh data
-    bm = bmesh.new()
-    bm.from_mesh(obj.data)
-
-    # Ensure the vertex index table is up-to-date
-    bm.verts.ensure_lookup_table()
-
-    # Set the vertex positions
-    for index, vertex_index in enumerate(vertex_indices):
-        bm.verts[vertex_index].co = positions[index]
-
-    # Update the object mesh data from the bmesh
-    bm.to_mesh(obj.data)
-    bm.free()
-
-    # Update the object
-    obj.data.update()
- 
-def set_vertex_positions_4dsafe(obj, vertex_indices, positions):
-    # Iterate over the vertex indices
-    for index, vertex_index in enumerate(vertex_indices):
-        # Get the position
-        position = positions[index]
-        
-        # Check if the position has 4 items
-        if len(position) == 4:
-            # Remove the last item
-            position = position[:3]
-        
-        # Set the vertex position
-        obj.data.vertices[vertex_index].co = position 
-    
-#Position Conversion / getter
-
-def convert_to_armature_space(armature, position, obj):
-    """Convert a position from object space to armature space."""
-    
-    # Convert the numpy array to a Vector
-    position = Vector(np.array(position).tolist())
-    
-    # Convert from object space to world space
-    position_world = obj.matrix_world @ position
-
-    # Convert from world space to armature space
-    position_armature = armature.matrix_world.inverted() @ position_world
-
-    return position_armature
-
-#Not used
-def getPositionByAnimation(new_positions, obj, armature, groupbone):
-    # Get the current frame
-    current_frame = bpy.context.scene.frame_current
-    
-    # Switch to pose mode to access bone transformations
-    bpy.ops.object.mode_set(mode='POSE')
-    
-    # Get the pose bone corresponding to the groupbone
-    pose_bone = armature.pose.bones.get(groupbone)
-    
-    # Create a list to store the transformed positions
-    transformed_positions = []
-    
-    # Get the inverse of the object's world transformation matrix
-    obj_matrix_world_inv = np.linalg.inv(obj.matrix_world)
-    
-    # Iterate over each new position
-    for position in new_positions:
-        # Set the pose bone's location to the position
-        pose_bone.location = position
-        
-        # Update the pose bone's transformation
-        bpy.context.view_layer.update()
-        
-        # Get the transformed position in world space
-        transformed_position_world = obj.matrix_world @ pose_bone.matrix @ Vector((0, 0, 0))
-        
-        # Convert the transformed position to the object's local space
-        transformed_position_local = obj_matrix_world_inv @ transformed_position_world
-        
-        # Append the transformed position to the list
-        transformed_positions.append(transformed_position_local)
-    
-    # Switch back to object mode
-    bpy.ops.object.mode_set(mode='OBJECT')
-    
-    return transformed_positions
-
-
-#Applies the Animation to the Mesh Coordinates to have a correct Position
-def getPositionByAnimation_Bonespace(new_positions, obj, armature, groupbone):
-    # Get the current frame
-    current_frame = bpy.context.scene.frame_current
-    
-    # Select the armature object
-    bpy.context.view_layer.objects.active = armature
-    
-    # Switch to pose mode to access bone transformations
-    bpy.ops.object.mode_set(mode='POSE')
-    
-    # Get the pose bone corresponding to the groupbone
-    pose_bone = armature.pose.bones.get(groupbone.name)
-    
-    # Create a list to store the transformed positions
-    transformed_positions = []
-    
-    # Get the inverse of the object's world transformation matrix
-    obj_matrix_world_inv = np.linalg.inv(obj.matrix_world)
-    
-    # Iterate over each new position
-    for position in new_positions:
-        # Convert the position to a 4-element vector
-        position_4d = Vector(np.append(position, 1))
-
-        # Transform the position to the bone space
-        position_bone_space = pose_bone.matrix @ position
-
-        # # Transform the position to the object space
-        # transformed_position = obj_matrix_world_inv @ position_bone_space
-
-        # # Convert the transformed position back to a 3D vector
-        # transformed_position = transformed_position[:3]
-                
-        transformed_positions.append(position_bone_space)         
-                
-    
-    # Switch back to object mode
-    bpy.ops.object.mode_set(mode='OBJECT')
-    
-    return transformed_positions
-
-
-def multiply_matrix(matrix, positions):
-    """
-    Multiply a matrix by a list of positions.
-    
-    Args:
-        matrix (list[list[float]]): The matrix to be multiplied.
-        positions (list[list[float]]): The list of positions to be multiplied.
-    
-    Returns:
-        list[list[float]]: The resulting positions after multiplication.
-    """
-    result = []
-    for position in positions:
-        new_position = [sum(a * b for a, b in zip(row, position)) for row in matrix]
-        result.append(new_position)
-    return result
-
-
-#get Matrix of Animation
-def getMatrixOfAnimation_PoseBonespace(obj, armature, groupbone):
-    # Get the current frame
-    current_frame = bpy.context.scene.frame_current
-    
-    armaturePosMode(armature, obj)
-    
-    # Select the armature object
-    bpy.context.view_layer.objects.active = armature
-    
-    # Switch to pose mode to access bone transformations
-    bpy.ops.object.mode_set(mode='POSE')
-    
-    # Get the pose bone corresponding to the groupbone
-    pose_bone = armature.pose.bones.get(groupbone.name)
-    
-    # Switch back to object mode
-    bpy.ops.object.mode_set(mode='OBJECT')
-    
-    objectEditMode(obj)
-    
-    return pose_bone.matrix
-
-
-
-def revertPositionByAnimation(positions, obj, armature, groupbone):
-    # Get the armature object
-    
-    armature_object = bpy.data.objects[obj.name + "_armature"]
-
-    # Switch to pose mode
-    bpy.ops.object.mode_set(mode='POSE')
-
-    # Iterate over the bones to find the right one
-    pose_bone = None
-    for bone in armature_object.pose.bones:
-        if bone.name == groupbone.name:
-            pose_bone = bone
-            break
-
-    # Check if pose_bone is None
-    if pose_bone is None:
-        raise ValueError(f"No bone found with name {groupbone.name}")
-
-    # Apply the inverted transformation matrix to remove the animation
-    print("internal calculation for corrected non animated position calculation")
-    transformed_positions = []
-    for position in positions:
-        position_vector = Vector(position)  # Convert numpy.ndarray to Vector
-        transformed_position = pose_bone.matrix.inverted() @ position_vector
-        transformed_positions.append(transformed_position)
-
-    return transformed_positions
 
 #Creates new Vertexgroup with Bone, tool to create subgroups of vertexgroups (used for testing)
 def key_newBone(context):
@@ -1162,119 +627,6 @@ def key_object_loose(context):
         
       
     objectEditMode(obj)
-    
-#Calculation of the Center of the Vertex Positions
-def get_vertex_Center(vertex_positions):
-    """Get the center of the given vertex positions"""
-    center = mathutils.Vector((0, 0, 0))
-    for vertex_position in vertex_positions:
-        center += vertex_position
-    center /= len(vertex_positions)
-    return center
-
-#Detects Changes in Vertex Positions to detect changes in scale
-def calculate_average_distance(vertex_positions, center):
-    """Calculate the average distance of vertices from the center"""
-    distances = [np.linalg.norm(vertex_position - center) for vertex_position in vertex_positions]
-    return sum(distances) / len(distances)
-
-#Calculation of Rotation Changes
-def calculate_rotation_matrix(old_positions, new_positions, old_center, new_center):
-    """Calculate the rotation matrix from old positions to new positions"""
-    # Subtract centers from positions
-    old_positions_centered = [pos - old_center for pos in old_positions]
-    new_positions_centered = [pos - new_center for pos in new_positions]
-
-    # Convert lists to numpy arrays
-    old_positions_centered = np.array(old_positions_centered)
-    new_positions_centered = np.array(new_positions_centered)
-
-    # Calculate rotation matrix using SVD
-    H = np.dot(new_positions_centered.T, old_positions_centered)
-    U, S, Vt = np.linalg.svd(H)
-    rotation_matrix = np.dot(Vt.T, U.T)
-
-    return rotation_matrix
-
-#Caculculation to find Translation
-def calculateCenterOfPoints(points, axis=0):
-    return  np.mean(points, axis)
-
-#Original Function currently that is used.
-def calculate_vertex_transformation(src_points, dst_points ):
-       # Subtract centroids
-    src_center = calculateCenterOfPoints(src_points)
-    dst_center = calculateCenterOfPoints(dst_points)
-    
-    src_points_centered = src_points - src_center
-    dst_points_centered = dst_points - dst_center
-
-    # Compute rotation
-    H = np.dot(src_points_centered.T, dst_points_centered)
-    U, S, Vt = np.linalg.svd(H)
-    rotation_matrix = np.dot(Vt.T, U.T)
-
-    # Check for reflection
-    if np.linalg.det(rotation_matrix) < 0:
-        Vt[-1, :] *= -1
-        rotation_matrix = np.dot(Vt.T, U.T)
-
-    # Ensure smallest rotation
-    d = (np.linalg.det(Vt) * np.linalg.det(U)) < 0.0
-    if d:
-        S[-1] = -S[-1]
-        Vt[-1, :] *= -1
-        rotation_matrix = np.dot(Vt.T, U.T)
-
-    # Check for reflection
-    if np.linalg.det(rotation_matrix) < 0:
-        # Flip the sign of the last column of Vt
-        Vt[-1, :] *= -1
-        rotation_matrix = np.dot(Vt.T, U.T)
-        
-    #rotation_matrix = np.linalg.inv(rotation_matrix)
-    
-    # Compute scale
-    src_points_transformed = np.dot(src_points_centered, rotation_matrix)
-    scale_x = np.linalg.norm(dst_points_centered[:, 0]) / np.linalg.norm(src_points_transformed[:, 0])
-    scale_y = np.linalg.norm(dst_points_centered[:, 1]) / np.linalg.norm(src_points_transformed[:, 1])
-    scale_z = np.linalg.norm(dst_points_centered[:, 2]) / np.linalg.norm(src_points_transformed[:, 2])
-    scale_matrix = np.diag([scale_x, scale_y, scale_z])
-    
-    # Debug non-matrix values
-    print("Position:", dst_center - src_center)
-    print("Scale:", scale_matrix)
-    print("Rotation:", rotation_matrix)
-
-
-    # Create transformation matrix
-    transformation_matrix = np.eye(4)
-    transformation_matrix[:3, :3] = np.dot(scale_matrix, rotation_matrix)
-    transformation_matrix[:3, 3] = dst_center - src_center
-    
-    #transformation_matrix[:3, :3] = rotation_matrix
-    #transformation_matrix[:3, 3] = dst_center - rotation_matrix @ src_center
-    
-
-    return transformation_matrix, src_center, dst_center
-
-#Combiner for the Transformation Matrix
-def combine_into_transformation_matrix(translation, scale, rotation):
-    """Combine translation, scale, and rotation into a transformation matrix"""
-    # Create 4x4 transformation matrix
-    transformation_matrix = np.eye(4)
-
-    # Set translation
-    transformation_matrix[:3, 3] = translation
-
-    # Set scale
-    transformation_matrix[:3, :3] *= scale
-
-    # Set rotation
-    transformation_matrix[:3, :3] = np.dot(transformation_matrix[:3, :3], rotation)
-
-    return transformation_matrix
-
 
 
 
@@ -1312,6 +664,15 @@ class Bonery_OT_keyloose(bpy.types.Operator):
    
  #Data Classes  
     
+class Bonery_OT_sideloaderrecall(bpy.types.Operator):
+    """Operator for Bonery addon"""
+    bl_idname =  "bonery.sideloader_recall"
+    bl_label = "Sideloader Recall"
+
+    def execute(self, context):      
+        sideloader()
+        return {'FINISHED'}    
+    
 class VertexPositionData(bpy.types.PropertyGroup):
     """Data for storing vertex positions"""
     vertex_position: bpy.props.FloatVectorProperty(name="Vertex Position")
@@ -1334,7 +695,6 @@ class Keydata(bpy.types.PropertyGroup):
     active_vertexgroupdata : bpy.props.IntProperty(name="Active Index", default=0)
     
     
-
 #Settings Data
 class Settingsdata(bpy.types.PropertyGroup):
     """Settings for Bonery addon"""
@@ -1367,8 +727,9 @@ class Tooldata(bpy.types.PropertyGroup):
 
 
 #region <Utility> <Methods>
-
 def register():
+    
+    
     """ !METHOD!
     Registrates Elements, may be used Different than usual due to the auto_load.py
 
@@ -1383,48 +744,4 @@ def register():
     setattr(bpy.types.Scene, "bonery_vertex_position_data", bpy.props.PointerProperty(name="UV Palettes settings data", type=VertexPositionData))
     
     
-def add_vertex_group_to_object(obj, group_name):
-    """Add a vertex group to the object if it doesn't already exist"""
-    if group_name not in obj.vertex_groups:
-        obj.vertex_groups.new(name=group_name)
-        for vertex in obj.data.vertices:
-            group_index = obj.vertex_groups[group_name].index
-            vertex_group = vertex.groups.get(group_index)
-            if not vertex_group:
-                vertex.groups.new(group_index)
-                
-def create_vertex_group(obj, group_name):
-    """Create a vertex group with the given name on the object"""
-    if group_name not in obj.vertex_groups:
-        obj.vertex_groups.new(name=group_name)
-
-#creates Vertexgroup Data
-def read_vertex_groups(obj):
-    """Read the vertex groups for the given object"""
-    vertex_group_data = {}
-    for vertex_group in obj.vertex_groups:
-        group_id = int(vertex_group.name.split("_")[1])
-        vertex_indices, vertex_weights = [], []
-        for vertex in obj.data.vertices:
-            for group in vertex.groups:
-                if group.group == vertex_group.index:
-                    vertex_indices.append(vertex.index)
-                    vertex_weights.append(group.weight)
-        position_data = VertexPositionData()
-        position_data.vertex_position = vertex_group.index
-        vertex_group_data[group_id] = position_data
-    return vertex_group_data
-
-#Simply Removes all Vertexgroups from an Object
-def remove_vertex_groups(obj):
-    """Remove all vertex groups from the given object by ID"""
-    for vertex_group in obj.vertex_groups:
-        obj.vertex_groups.remove(vertex_group)
-
-#Removes a Specific Vertexgroup
-def remove_vertex_groups_by_name(obj, group_name):
-    """Remove vertex groups from the given object by name"""
-    for vertex_group in obj.vertex_groups:
-        if vertex_group.name == group_name:
-            obj.vertex_groups.remove(vertex_group)
 
