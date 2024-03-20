@@ -54,4 +54,97 @@ def clean_other_groups(obj, groupname, changed_vertices):
 
 
 
-  
+#Used by UVC_Operator_selectByGroup from generic_toolbox_operators.py
+
+def selectByGroup(self, ctx):
+    obj = bpy.context.object
+    if obj.mode != 'EDIT':
+        bpy.ops.object.mode_set(mode='EDIT')
+
+    selected_groups = get_common_vertex_groups_from_selected()
+
+    # Ensure we're in edit mode before deselecting all
+    if bpy.context.object.mode != 'EDIT':
+        bpy.ops.object.mode_set(mode='EDIT')
+
+    # bpy.ops.mesh.select_all(action='DESELECT')
+    for group in selected_groups:
+        select_vertices_in_group(group)
+
+def select_vertices_in_group(group):
+    obj = bpy.context.object
+
+    # Ensure we're in object mode
+    bpy.ops.object.mode_set(mode='OBJECT')
+
+    # Deselect all vertices
+    for v in obj.data.vertices:
+        v.select = False
+
+    # Save vertices in the specified group
+    group_verts = [v for v in obj.data.vertices for g in v.groups if obj.vertex_groups[g.group] == group]
+
+    # Switch back to edit mode to see the selection
+    bpy.ops.object.mode_set(mode='EDIT')
+
+    # Get a BMesh from the object's mesh data
+    bm = bmesh.from_edit_mesh(obj.data)
+
+    # Deselect all vertices in bmesh
+    for v in bm.verts:
+        v.select = False
+
+    # Ensure the internal index table is up to date
+    bm.verts.ensure_lookup_table()
+
+    # Select vertices in the specified group
+    for v in group_verts:
+        bm.verts[v.index].select = True
+
+    # Update the mesh to reflect the selection changes
+    bmesh.update_edit_mesh(obj.data)
+
+
+def get_vertex_groups_from_selected():
+    obj = bpy.context.object
+    selected_vertex_groups = []
+
+    if obj.type == 'MESH':
+        # Ensure we're in object mode
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        # Iterate over all vertices in the mesh
+        for v in obj.data.vertices:
+            # If the vertex is selected
+            if v.select:
+                # Iterate over the vertex groups this vertex belongs to
+                for g in v.groups:
+                    group = obj.vertex_groups[g.group]
+                    if group not in selected_vertex_groups:
+                        selected_vertex_groups.append(group)
+
+    return selected_vertex_groups
+
+def get_common_vertex_groups_from_selected():
+    obj = bpy.context.object
+    common_vertex_groups = None
+
+    if obj.type == 'MESH':
+        # Ensure we're in object mode
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        # Iterate over all vertices in the mesh
+        for v in obj.data.vertices:
+            # If the vertex is selected
+            if v.select:
+                # Get the vertex groups this vertex belongs to
+                vertex_groups = [obj.vertex_groups[g.group] for g in v.groups]
+
+                if common_vertex_groups is None:
+                    # If this is the first selected vertex, all its groups are potential common groups
+                    common_vertex_groups = set(vertex_groups)
+                else:
+                    # Otherwise, only keep the groups that are also in the new list
+                    common_vertex_groups.intersection_update(vertex_groups)
+
+    return list(common_vertex_groups) if common_vertex_groups else []

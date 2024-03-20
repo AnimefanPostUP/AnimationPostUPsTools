@@ -15,6 +15,9 @@ import re
 import glob
 
 
+
+
+
 # def import_functions_from_file(file_name):
 #     print("running import_functions_from_file")
 #     current_directory = os.path.dirname(__file__)
@@ -101,6 +104,375 @@ def sideloader():
 sideloader()
 sideloadtester()
 
+#Generic Tools:
+class uvc_extratoolpanel():
+    """ %PANEL%
+    Drawing the Colors and eventually Displayoption Buttons in Future
+    """
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "TinyToolbox"
+    bl_options = {"DEFAULT_CLOSED"}
+ 
+#Core Menu    
+class extratool_PT_panel(uvc_extratoolpanel, bpy.types.Panel):
+    """ %PANEL%
+    Drawing the Colors and eventually Displayoption Buttons in Future
+    """
+    bl_idname = "anifanpostuptools_PT_extratools"
+    bl_label = "Extra Tools"
+     
+    def draw(self, ctx):
+        layout = self.layout
+
+#Pivotsetter
+class UVC_PT_extratools_1(uvc_extratoolpanel, bpy.types.Panel):
+    bl_label = "Pivot Setter"
+    bl_parent_id = "anifanpostuptools_PT_extratools"
+    
+    
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        
+        settingsdata=bpy.context.scene.ttb_settings_data
+
+        box = layout.box() #NEW BOX
+        box.label(text="Set Pivot")     
+        row=box.row()   
+        box.label(text="Top/Bottom are Z Axies")  
+        row=box.row()   
+        box.label(text="in Z/Z- mode its the Y Axies")  
+        
+        row.prop(settingsdata, "direction", expand=True) 
+        row=box.row()    
+        row.prop(settingsdata, "transformspace", expand=True) 
+        row=box.row()    
+        
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="RADIOBUT_ON")
+        op.height="tl"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="TRIA_UP")
+        op.height="tm"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="RADIOBUT_ON")
+        op.height="tr"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        row=box.row()    
+        
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="TRIA_LEFT")
+        op.height="ml"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="RADIOBUT_ON")
+        op.height="mm"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="TRIA_RIGHT")
+        op.height="mr"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        row=box.row()    
+        
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="RADIOBUT_ON")
+        op.height="bl"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="TRIA_DOWN")
+        op.height="bm"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="RADIOBUT_ON")
+        op.height="br"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        row=box.row()    
+        
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="Average")
+        op.height="ct"
+        op.direction=settingsdata.direction
+        op.direction=settingsdata.direction
+        row=box.row()    
+  
+#Rotationrool        
+class UVC_PT_extratools_2(uvc_extratoolpanel, bpy.types.Panel):
+    bl_label = "Rotationtool"
+    bl_parent_id = "anifanpostuptools_PT_extratools"
+    
+    
+    def draw(self, context):
+        layout = self.layout
+
+        box = layout.box() #NEW BOX
+        box.label(text="Rotationclip:")   
+        row=box.row()   
+        op=row.operator(UVC_Operator_clipRotation.bl_idname, text="Clip by 15°")
+        row=box.row()   
+        
+        layout.row().separator()
+        box.label(text="Quickrotate:")   
+        row=box.row()   
+        op=row.operator(UVC_Operator_rotate90DegL.bl_idname, text="Rotate L")
+        row=box.row()   
+        op=row.operator(UVC_Operator_rotate90DegR.bl_idname, text="Rotate R")
+        row=box.row()   
+
+#Autosmooth        
+class UVC_PT_extratools_3(uvc_extratoolpanel, bpy.types.Panel):
+    bl_label = "Autosmooth"
+    bl_parent_id = "anifanpostuptools_PT_extratools"
+    
+    
+    def draw(self, context):
+        layout = self.layout
+        box = layout.box() #NEW BOX
+        row=box.row()
+        
+        settingsdata = bpy.context.scene.ttb_settings_data
+        
+        row.prop(settingsdata, "autosmooth", expand=True, text="Autosmooth")  
+        row.prop(settingsdata, "cleanSplitNormals", expand=True, text="Set Clear")
+
+        
+        box.label(text="Split Normals by Degree:")   
+        row=box.row()   
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="15").angle=5
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="20").angle=15
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="25").angle=25
+        row=box.row()  
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="30").angle=30
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="35").angle=35
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="40").angle=40
+        row=box.row()  
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="45").angle=45
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="50").angle=50
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="55").angle=55
+        
+        row = box.row()
+        row.label(text="Active(!) Smoothing Angle:")  
+        row.prop(settingsdata, "splitangle", text="" , slider=True)
+
+class UVC_PT_extratools_4(uvc_extratoolpanel, bpy.types.Panel):
+    bl_label = "Vertex Groups"
+    bl_parent_id = "anifanpostuptools_PT_extratools"
+    
+    
+    def draw(self, context):
+        layout = self.layout
+        box = layout.box() #NEW BOX
+        row=box.row()
+        
+        settingsdata = bpy.context.scene.ttb_settings_data
+        
+        box.label(text="Split Normals by Degree:")   
+        row=box.row()   
+        op=row.operator(UVC_Operator_selectByGroup.bl_idname, text="Select SimilarGroup")
+
+
+# operator UVC_Operator_selectByGroup
+class UVC_Operator_selectByGroup(bpy.types.Operator):
+    """ OPERATOR
+    Adds a Panel
+    """
+    bl_idname = "wm.uvc_selectbygroup"
+    bl_label = "Select Similar Group"
+    
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Selecting by Group")
+        selectByGroup(self, ctx)
+        return {'FINISHED'}
+    
+class UVC_Operator_setOrigin(bpy.types.Operator):
+
+    """ OPERATOR
+    Adds a Panel
+    """
+
+
+    bl_idname = "uvc.setorigin"
+    bl_label = "sets the Origin of all Selected Objects"
+    
+    
+    
+    height: bpy.props.EnumProperty(
+        items=[
+            ('tl', 'Top Left', 'ltl', '', 1),
+            ('tm', 'Top Mid', 'tm', '', 2),    
+            ('tr', 'Top Right', 'tr', '', 3),
+            ('ml', 'Mid Left', 'ml', '', 4),
+            ('mm', 'Mid ', '', 'mm', 5),    
+            ('mr', 'Mid Right', 'mr', '', 6),
+            ('bl', 'Bottom Left', 'bl', '', 7),
+            ('bm', 'Bottom Mid', 'bm', '', 8),    
+            ('br', 'Bottom Right', 'br', '', 9),
+            ('ct', 'Center', 'cr', '', 10),
+        ],
+        name="Pivot Placement",
+        description="If the Pivot should be placed on a Edge, Corner or Face",
+        default='mm'
+    )
+    
+
+    direction: bpy.props.EnumProperty(
+        items=[
+            ('x', 'X', 'X', '', 1),
+            ('xn', 'X-', 'X-', '', 2),    
+            ('y', 'Y', 'Y', '', 3),
+            ('yn', 'Y-', 'Y-', '', 4),    
+            ('z', 'Z', 'Z', '', 5),
+            ('zn', 'Z-', 'Z-', '', 6),    
+        ],
+        name="Which Direction",
+        description="Which Direction to set the Pivot",
+        default='zn'
+    )
+    
+    transformspace: bpy.props.EnumProperty(
+        items=[
+            ('objectspace', 'Object', 'Direction by Objectspace', '', 1),
+            ('worldspace', 'World', 'Direction by Worldspace', '', 2),    
+            ('auto', 'Auto', 'Will Clip the Objectrotation by the most fitting Worldspace direction', '', 3),
+        ],
+        name="Which Direction",
+        description="Which Direction to set the Pivot",
+        default='objectspace'
+    )
+    
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Setting Origin of Selection")
+        setPivot(self=self, context=ctx)
+        
+        return {'FINISHED'}
+    
+class UVC_Operator_splitnormals(bpy.types.Operator):    
+    """ OPERATOR Adds a Panel"""
+
+
+    bl_idname = "wm.uvc_splitnormals"
+    bl_label = "Splits the Normals of all selected Objects"
+    #create integer
+    angle : bpy.props.IntProperty(name="Angle", default=30, min=-360, max=360)
+
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Smoothing")
+        splitNormals(self=self, context=ctx)
+        return {'FINISHED'}
+    
+    
+class UVC_Operator_rotate90DegL(bpy.types.Operator):    
+    """ OPERATOR Adds a Panel"""
+
+
+    bl_idname = "wm.uvc_rotate90degl"
+    bl_label = "Rotates 90 degrees"
+    
+
+    
+    
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Rotating")
+        rotate90DegL(self=self, context=ctx)
+        
+        return {'FINISHED'}
+  
+class UVC_Operator_rotate90DegR(bpy.types.Operator):    
+    """ OPERATOR Adds a Panel"""
+
+
+    bl_idname = "wm.uvc_rotate90degr"
+    bl_label = "Rotates 90 degrees"
+    
+
+    
+    
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Rotating")
+        rotate90DegR(self=self, context=ctx)
+        return {'FINISHED'}
+
+class UVC_Operator_clipRotation(bpy.types.Operator):    
+    """ OPERATOR Adds a Panel"""
+
+
+    bl_idname = "wm.uvc_cliprotation"
+    bl_label = "Clips the Rotation to 15 Degrees into the shortest direction"
+    
+
+    
+    
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Clipping Rotation")
+        clipRotation(self=self, context=ctx)
+        
+        return {'FINISHED'}
+    
+
+
+class UVC_Operator_rerouteSnapping(bpy.types.Operator):    
+    """ OPERATOR Adds a Panel"""
+
+
+    bl_idname = "wm.uvc_splitnormals"
+    bl_label = "Splits the Normals of all selected Objects"
+    #create integer
+    angle : bpy.props.IntProperty(name="Angle", default=30, min=-360, max=360)
+
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Smoothing")
+        splitNormals(self=self, context=ctx)
+        return {'FINISHED'}
+
+class EmptyOperator(bpy.types.Operator):
+    bl_idname = "my.empty_operator"
+    bl_label = "Empty Operator"
+
+    def execute(self, context):
+        return {'FINISHED'}
+
+
+#Generic Tools Data:
+
+def splitNormals_dummy(self, context):
+    splitNormals(self, context)
+
+class TTB_Data_Settings(bpy.types.PropertyGroup):
+    """Stores Settings"""
+
+
+    direction: bpy.props.EnumProperty(
+        items=[
+            ('x', 'X', 'X', '', 1),
+            ('xn', 'X-', 'X-', '', 2),    
+            ('y', 'Y', 'Y', '', 3),
+            ('yn', 'Y-', 'Y-', '', 4),    
+            ('z', 'Z', 'Z', '', 5),
+            ('zn', 'Z-', 'Z-', '', 6),    
+        ],
+        name="Which Direction",
+        description="Which Direction to set the Pivot",
+        default='zn'
+    )
+    transformspace: bpy.props.EnumProperty(
+        items=[
+            ('objectspace', 'Object', 'Direction by Objectspace', '', 1),
+            ('worldspace', 'World', 'Direction by Worldspace', '', 2),    
+            ('auto', 'Auto', 'Will Clip the Objectrotation by the most fitting Worldspace direction', '', 3),
+        ],
+        name="Which Direction",
+        description="Which Direction to set the Pivot",
+        default='objectspace'
+    )   
+    cleanSplitNormals : bpy.props.BoolProperty(name="Clear Split Normals", description ="Clears Split Normals before resharpening",default= False)
+    autosmooth : bpy.props.BoolProperty(name="Autosmooth", description ="Sets the Objects to Smooth Automatically",default= False)
+    
+    #Float Property called splitangle
+    splitangle : bpy.props.FloatProperty(name="Split Angle", description ="Angle to Split Normals",default= 30, min=0, max=180, update = splitNormals_dummy)
+
+
+
 
 
 #List Of Keydata
@@ -137,7 +509,7 @@ class Bonery_UL_vertexgroupdata(bpy.types.UIList):
 class Bonery_PT_CorePanel(bpy.types.Panel):
     """Core Panel for Bonery addon"""
     bl_label = "Core"
-    bl_idname = "BONERY_PT_core_panel"
+    bl_idname = "anifanpostuptools_PT_core_panel"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = 'Bonery'
@@ -742,6 +1114,8 @@ def register():
     setattr(bpy.types.Scene, "bonery_tools_data", bpy.props.PointerProperty(name="UV Palettes settings data", type=Tooldata))
     setattr(bpy.types.Scene, "bonery_vertex_group_data", bpy.props.PointerProperty(name="UV Palettes settings data", type=VertexGroupData))
     setattr(bpy.types.Scene, "bonery_vertex_position_data", bpy.props.PointerProperty(name="UV Palettes settings data", type=VertexPositionData))
+    #Generic Tools
+    setattr(bpy.types.Scene, "ttb_settings_data", bpy.props.PointerProperty(name="Generic Tools settings data", type=TTB_Data_Settings))
     
     
 
