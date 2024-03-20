@@ -54,9 +54,27 @@ def clean_other_groups(obj, groupname, changed_vertices):
 
 
 
-#Used by UVC_Operator_selectByGroup from generic_toolbox_operators.py
-
+#Used by UVC_Operator_selectByGroup from
 def selectByGroup(self, ctx):
+    
+    activeobj = ctx.active_object
+    me = activeobj.data
+    bm = bmesh.from_edit_mesh(me)
+
+    # Iterate through faces to find selected ones
+    active_face_index = None
+    
+    for face in bm.faces:
+        for element in reversed(bm.select_history):
+            if isinstance(element, bmesh.types.BMFace):
+                face = element
+                break
+
+        if face is None: 
+            return (None)
+        if face.select and active_face_index is None:
+            active_face_index = face.index
+
     obj = bpy.context.object
     if obj.mode != 'EDIT':
         bpy.ops.object.mode_set(mode='EDIT')
@@ -70,6 +88,16 @@ def selectByGroup(self, ctx):
     # bpy.ops.mesh.select_all(action='DESELECT')
     for group in selected_groups:
         select_vertices_in_group(group)
+        
+    if active_face_index is not None:
+        # Update the BMesh data
+        bm = bmesh.from_edit_mesh(me)
+        # Update the internal index table
+        bm.faces.ensure_lookup_table()   
+        # Select the active face
+        bm.select_history.add( bm.faces[active_face_index])
+            
+            
 
 def select_vertices_in_group(group):
     obj = bpy.context.object
@@ -103,6 +131,10 @@ def select_vertices_in_group(group):
 
     # Update the mesh to reflect the selection changes
     bmesh.update_edit_mesh(obj.data)
+    # Switch to vertex select mode
+    bpy.ops.mesh.select_mode(type='VERT')
+    bpy.ops.mesh.select_mode(type='FACE')
+
 
 
 def get_vertex_groups_from_selected():

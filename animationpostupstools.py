@@ -7,6 +7,7 @@ import math
 import mathutils
 from mathutils import Vector
 from bpy.types import Menu
+from bpy.types import WorkSpaceTool
 import numpy as np
 import os
 
@@ -111,7 +112,7 @@ class uvc_extratoolpanel():
     """
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = "TinyToolbox"
+    bl_category = "AnimfanPostUP"
     bl_options = {"DEFAULT_CLOSED"}
  
 #Core Menu    
@@ -267,17 +268,16 @@ class UVC_PT_extratools_4(uvc_extratoolpanel, bpy.types.Panel):
         
         settingsdata = bpy.context.scene.ttb_settings_data
         
-        box.label(text="Split Normals by Degree:")   
+        box.label(text="Select shared Vertexgroup:")   
         row=box.row()   
         op=row.operator(UVC_Operator_selectByGroup.bl_idname, text="Select SimilarGroup")
-
 
 # operator UVC_Operator_selectByGroup
 class UVC_Operator_selectByGroup(bpy.types.Operator):
     """ OPERATOR
     Adds a Panel
     """
-    bl_idname = "wm.uvc_selectbygroup"
+    bl_idname = "anifanpostuptools.selectbygroup"
     bl_label = "Select Similar Group"
     
     def execute(self, ctx):
@@ -285,6 +285,103 @@ class UVC_Operator_selectByGroup(bpy.types.Operator):
         selectByGroup(self, ctx)
         return {'FINISHED'}
     
+class UVC_Operator_selectByGroupTool(bpy.types.Operator):
+    """ OPERATOR
+    Adds a Panel
+    """
+    bl_idname = "anifanpostuptools.selectbygrouptool"
+    bl_label = "Select Similar Group"
+    
+    def invoke(self, context, event):
+        bpy.ops.ed.undo_push(message="Select By Group")
+        # Perform the default selection operation
+        bpy.ops.view3d.select(location=(event.mouse_region_x, event.mouse_region_y))
+
+        # Then execute your custom operation
+        selectByGroup(self, context)
+
+        return {'FINISHED'}
+
+class UVC_Operator_transformByGroupTool(bpy.types.Operator):
+    """ OPERATOR
+    Adds a Panel
+    """
+    bl_idname = "anifanpostuptools.transformbygrouptool"
+    bl_label = "Transform Similar Group"
+    
+    def invoke(self, context, event):
+        print("activated Transformtool")
+        # Get the active mesh
+        obj = context.active_object
+        me = obj.data
+        bm = bmesh.from_edit_mesh(me)
+        bpy.ops.ed.undo_push(message="Select By Group Transform")
+        # Initialize a list to store selected faces
+        selected_faces = []
+
+        # Iterate through faces to find selected ones
+        active_face = None
+        
+        for face in bm.faces:
+            for element in reversed(bm.select_history):
+                if isinstance(element, bmesh.types.BMFace):
+                    face = element
+                    break
+
+            if face is None: 
+                return (None)
+            if face.select and active_face is None:
+                active_face=face
+    
+    
+
+        if active_face is None: 
+            print("canceled")
+            return {'CANCELLED'}
+
+        
+
+        # Find the most facing axis of the active face
+        most_facing_axis = find_most_facing_axis(active_face.normal)
+        
+        print (most_facing_axis)
+
+        # Set the constraint axis for the transform operator
+        constraint_axis = (abs(most_facing_axis.x) == 1.0, abs(most_facing_axis.y) == 1.0, abs(most_facing_axis.z) == 1.0)
+        
+        # Call the transform.translate operator with the constraint axis
+        bpy.ops.transform.translate('INVOKE_DEFAULT', constraint_axis=constraint_axis)
+
+        return {'RUNNING_MODAL'}
+    
+class AutoGroupSelector(WorkSpaceTool):
+    bl_space_type = 'VIEW_3D'
+    bl_context_mode = 'EDIT_MESH'
+
+    bl_idname = "anifanpostuptools.auto_group_selector"
+    bl_label = "Auto Group Selector"
+    bl_description = (
+        "This is a tooltip\n"
+        "with multiple lines"
+    )
+    bl_icon = "ops.generic.select"
+    bl_widget = None
+    bl_operator = UVC_Operator_selectByGroupTool.bl_idname
+    
+    bl_keymap = (
+        ("anifanpostuptools.selectbygrouptool", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+        ("anifanpostuptools.selectbygrouptool", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
+        ("anifanpostuptools.transformbygrouptool", {"type":"G", "value": 'PRESS'}, None),
+    )
+
+    # def draw_settings(context, layout, tool):
+    #     #props = tool.operator_properties("view3d.select_lasso")
+    #     #layout.prop(props, "mode")
+    def draw_settings(context, layout, tool):
+        pass
+
+
+
 class UVC_Operator_setOrigin(bpy.types.Operator):
 
     """ OPERATOR
@@ -506,13 +603,13 @@ class Bonery_UL_vertexgroupdata(bpy.types.UIList):
             layout.label(text="Invalid VertexgroupData")
 
 #Panel of the Bonerytool
-class Bonery_PT_CorePanel(bpy.types.Panel):
+class AnimationfanPostUP_PT_CorePanel(bpy.types.Panel):
     """Core Panel for Bonery addon"""
     bl_label = "Core"
     bl_idname = "anifanpostuptools_PT_core_panel"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = 'Bonery'
+    bl_category = 'AnimfanPostUP'
 
     def draw(self, context):
         layout = self.layout
@@ -1116,6 +1213,11 @@ def register():
     setattr(bpy.types.Scene, "bonery_vertex_position_data", bpy.props.PointerProperty(name="UV Palettes settings data", type=VertexPositionData))
     #Generic Tools
     setattr(bpy.types.Scene, "ttb_settings_data", bpy.props.PointerProperty(name="Generic Tools settings data", type=TTB_Data_Settings))
+
+    # tool_auto_group_selector
+    # AutoGroupSelector
     
-    
+    #Register the tool using setattribute
+    #setattr(bpy.types, "tool_auto_group_selector", AutoGroupSelector)
+    bpy.utils.register_tool(AutoGroupSelector, after={"builtin.select_box"})
 
