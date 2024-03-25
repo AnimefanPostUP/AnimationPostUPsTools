@@ -346,11 +346,18 @@ class UVC_Operator_transformByGroupTool(bpy.types.Operator):
         
         print (most_facing_axis)
 
+        currentOrientationMode = bpy.context.scene.transform_orientation_slots[0].type
+        #Set mode to local
+        bpy.context.scene.transform_orientation_slots[0].type = 'LOCAL'
+        
         # Set the constraint axis for the transform operator
         constraint_axis = (abs(most_facing_axis.x) == 1.0, abs(most_facing_axis.y) == 1.0, abs(most_facing_axis.z) == 1.0)
         
         # Call the transform.translate operator with the constraint axis
         bpy.ops.transform.translate('INVOKE_DEFAULT', constraint_axis=constraint_axis)
+        
+        #revert to old mode
+        bpy.context.scene.transform_orientation_slots[0].type = currentOrientationMode
 
         return {'RUNNING_MODAL'}
     
@@ -381,7 +388,28 @@ class AutoGroupSelector(WorkSpaceTool):
         pass
 
 
+class AutoGroupSelectorObject(WorkSpaceTool):
+    bl_space_type = 'VIEW_3D'
+    bl_context_mode = 'OBJECT'
 
+    bl_idname = "anifanpostuptools.auto_group_selector_object"
+    bl_label = "Auto Group Selector"
+    bl_description = (
+        "This is a tooltip\n"
+        "with multiple lines"
+    )
+    bl_icon = "ops.generic.select"
+    bl_widget = None
+    bl_operator = "view3d.select"
+    
+    bl_keymap = (
+        ("view3d.select", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
+        ("view3d.select", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG'}, None),
+    )
+
+    def draw_settings(context, layout, tool):
+        pass
+    
 class UVC_Operator_setOrigin(bpy.types.Operator):
 
     """ OPERATOR
@@ -1220,4 +1248,5 @@ def register():
     #Register the tool using setattribute
     #setattr(bpy.types, "tool_auto_group_selector", AutoGroupSelector)
     bpy.utils.register_tool(AutoGroupSelector, after={"builtin.select_box"})
+    bpy.utils.register_tool(AutoGroupSelectorObject, after={"builtin.select_box"})
 
