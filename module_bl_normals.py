@@ -1,33 +1,32 @@
 
 
-def smoothObjects (self, context):
-    #Shade Smooth all selected Objects
-    wasInObjectmode=False
-    
-    if bpy.context.mode != 'EDIT_MESH':
-        wasInObjectmode=True
-        bpy.ops.object.mode_set(mode='EDIT')
-    
-    selected_Objects=bpy.context.selected_objects
+def smoothObjects(self, context):
+    # Shade Smooth all selected Objects
+    selected_Objects = bpy.context.selected_objects
     for obj in selected_Objects:
-        if not obj.type == 'MESH':
-                continue
-                
-        me = obj.data
-        bm = bmesh.from_edit_mesh(me)
-        for f in bm.faces:
-            f.smooth = True
-            
-    if wasInObjectmode:
-        bpy.ops.object.mode_set(mode='OBJECT')        
+        if obj.type == 'MESH':
+            # Set the object as active
+            bpy.context.view_layer.objects.active = obj
+            # Smooth the object
+            bpy.ops.object.shade_smooth()
     bpy.context.view_layer.update()
+    
+def smoothReversedSelection(self, context):
+    bpy.ops.mesh.select_mode(type='VERT')
+    bpy.ops.mesh.select_all(action='INVERT')
+    bpy.ops.mesh.vertices_smooth()
+    bpy.ops.mesh.select_all(action='INVERT')
+    
     
 def splitNormals(self, context):
     settingsdata = bpy.context.scene.ttb_settings_data
-
+    selectModeType = list(bpy.context.tool_settings.mesh_select_mode)
     autosmooth= settingsdata.autosmooth
     clear= settingsdata.cleanSplitNormals
     activeMode=False
+    
+    isEditMode = bpy.context.mode == 'EDIT_MESH'
+  
     
     #check if self has angle attribute
     if not hasattr(self, "angle"):
@@ -68,8 +67,8 @@ def splitNormals(self, context):
         
         
     
-    if(autosmooth):
-        smoothObjects(self, context)
+
+   
         
     if clear: # Clear if needed
         bpy.ops.mesh.select_all(action='DESELECT')
@@ -81,6 +80,7 @@ def splitNormals(self, context):
     wasInObjectmode=False
     
     
+
     
 
         
@@ -103,13 +103,35 @@ def splitNormals(self, context):
                 if edge.select:
                     secondedgecount+=1
             
-    if activeMode:
+    if not activeMode:
         if edgecount>secondedgecount or edgecount<secondedgecount:
             bpy.ops.ed.undo_push(message = "Push Undo (Split Normals Operator): "+str(abs(edgecount-secondedgecount)) + " Edges Changed")
             #print(str(abs(edgecount-secondedgecount)))
     
     #Split Normals of the selected edges
+    print("splitting at angle: "+ str(angle))
     bpy.ops.mesh.split_normals()
+    
+    if(autosmooth):
+        bpy.context.view_layer.update()
+        bpy.ops.object.mode_set(mode='EDIT')
+        smoothReversedSelection(self, context)
+        
+    #Change select mode back to original
+    bpy.ops.object.mode_set(mode='EDIT')
+    if selectModeType[0]:
+        bpy.ops.mesh.select_mode(type='VERT')
+    elif selectModeType[1]:
+        bpy.ops.mesh.select_mode(type='EDGE')
+    elif selectModeType[2]:
+        bpy.ops.mesh.select_mode(type='FACE')
+    
+    if(not activeMode):
+        #move back to original mode
+        if (isEditMode):
+            bpy.ops.object.mode_set(mode='EDIT')
+        else:
+            bpy.ops.object.mode_set(mode='OBJECT')     
     # if not activeMode:
     #     bpy.ops.view3d.update_edit_mesh()
             
