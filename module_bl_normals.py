@@ -1,3 +1,18 @@
+def cleanupSharpsAndSplits(self, context):
+    selected_objects = bpy.context.selected_objects
+    for obj in selected_objects:
+        if obj.type == 'MESH':
+            bpy.context.view_layer.objects.active = obj
+            bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.mesh.select_all(action='SELECT')
+            bpy.ops.mesh.mark_sharp(clear=True)
+            bpy.ops.object.mode_set(mode='OBJECT')
+            bpy.ops.mesh.customdata_custom_splitnormals_clear()
+            bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.mesh.merge_normals()
+            bpy.ops.mesh.select_all(action='DESELECT')
+            bpy.ops.object.mode_set(mode='OBJECT')
+            bpy.ops.object.shade_flat()
 
 
 def smoothObjects(self, context):
@@ -9,6 +24,8 @@ def smoothObjects(self, context):
             bpy.context.view_layer.objects.active = obj
             # Smooth the object
             bpy.ops.object.shade_smooth()
+            # Set autosmooth value to 0
+            obj.data.auto_smooth_angle = 0
     bpy.context.view_layer.update()
     
 def smoothReversedSelection(self, context):
@@ -16,6 +33,12 @@ def smoothReversedSelection(self, context):
     bpy.ops.mesh.select_all(action='INVERT')
     bpy.ops.mesh.vertices_smooth()
     bpy.ops.mesh.select_all(action='INVERT')
+
+def mergeNormals(self, context):
+    bpy.ops.mesh.select_mode(type='EDGE')
+    bpy.ops.mesh.select_all(action='SELECT')
+    bpy.ops.mesh.merge_normals()
+    bpy.ops.mesh.select_all(action='DESELECT')
     
     
 def splitNormals(self, context):
@@ -54,9 +77,14 @@ def splitNormals(self, context):
 
     #Deselect objects that arent meshes
     for obj in selected_Objects:
-        if not obj.type == 'MESH':
+        if obj.type == 'MESH':
+            obj.data.auto_smooth_angle = 360
+        else:
             obj.select_set(False)
            
+        
+    if clear: # Clear if needed
+        bpy.ops.mesh.customdata_custom_splitnormals_clear()    
 
       #go to edit mode if not already 
     if bpy.context.mode != 'EDIT_MESH':
@@ -67,15 +95,14 @@ def splitNormals(self, context):
         
         
     
-
-   
-        
     if clear: # Clear if needed
         bpy.ops.mesh.select_all(action='DESELECT')
         bpy.ops.mesh.select_all(action='SELECT')
         bpy.ops.mesh.mark_sharp(clear=True)
+        mergeNormals(self, context)
+   
+
         
-        bpy.ops.mesh.customdata_custom_splitnormals_clear()    
            
     wasInObjectmode=False
     

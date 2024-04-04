@@ -18,3 +18,6 @@ def get_current_vertexgroupdata(context):
 
 def get_current_settingsdata(context):
     return bpy.context.scene.bonery_settings_data
+
+def get_current_tooldata_renamer(context):
+    return bpy.context.scene.bonery_tools_data_renamer

@@ -237,21 +237,89 @@ class UVC_PT_extratools_3(uvc_extratoolpanel, bpy.types.Panel):
         row.prop(settingsdata, "autosmooth", expand=True, text="Autosmooth")  
         row.prop(settingsdata, "cleanSplitNormals", expand=True, text="Set Clear")
 
+        row.prop(settingsdata, "extendsplitnormalmenu", expand=True, text="Expand")
+        
         
         box.label(text="Split Normals by Degree:")   
+
+        #===
         row=box.row()   
-        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="15").angle=5
-        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="20").angle=15
-        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="25").angle=25
-        row=box.row()  
-        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="30").angle=30
-        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="35").angle=35
-        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="40").angle=40
-        row=box.row()  
-        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="45").angle=45
-        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="50").angle=50
-        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="55").angle=55
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="5").angle=5
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="8").angle=7
+
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="10").angle=10
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="13").angle=13
         
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="15").angle=15
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="15").angle=18
+       
+        #===
+        row=box.row() 
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="20").angle=20
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="23").angle=23
+
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="25").angle=25
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="28").angle=28
+
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="30").angle=30
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="33").angle=33
+        
+        #===
+        row=box.row()  
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="35").angle=35
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="38").angle=38
+
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="40").angle=40
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="43").angle=43
+
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="45").angle=45
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="48").angle=48
+
+        #===
+        row=box.row()  
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="50").angle=50
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="53").angle=53
+
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="55").angle=55
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="58").angle=58
+
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="60").angle=60
+
+
+
+
+        if(settingsdata.extendsplitnormalmenu):
+            #===
+            row=box.row()  
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="65").angle=65
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="70").angle=70
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="75").angle=75
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="80").angle=80
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="85").angle=85
+
+            row=box.row()  
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="90").angle=90
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="95").angle=95
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="100").angle=100
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="105").angle=105
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="110").angle=110
+
+        
+        row = box.row()
+        row.label(text="Clean Sharps/Splits/Shade:")  
+        op=row.operator(UVC_Operator_cleanupsharps.bl_idname, text="Clean")
+
         row = box.row()
         row.label(text="Active(!) Smoothing Angle:")  
         row.prop(settingsdata, "splitangle", text="" , slider=True)
@@ -271,6 +339,382 @@ class UVC_PT_extratools_4(uvc_extratoolpanel, bpy.types.Panel):
         box.label(text="Select shared Vertexgroup:")   
         row=box.row()   
         op=row.operator(UVC_Operator_selectByGroup.bl_idname, text="Select SimilarGroup")
+
+class UVC_PT_extratools_5(uvc_extratoolpanel, bpy.types.Panel):
+    bl_label = "Renamer"
+    bl_parent_id = "anifanpostuptools_PT_extratools"
+    
+    
+    def draw(self, context):
+        layout = self.layout
+        box = layout.box() #NEW BOX
+        row=box.row()
+
+        Tooldata_Renamer= get_current_tooldata_renamer(context) #Get Tooldata
+
+
+
+        #Prop Prefix
+        row=box.row()
+        row.prop (Tooldata_Renamer, "Prefix", text="Prefix")
+        row=box.row()
+        row.label(text="_")
+        row=box.row()
+        row.prop (Tooldata_Renamer, "Suffix", text="Suffix")
+
+
+
+
+        box = layout.box() #NEW BOX
+        row=box.row()
+        row.label(text="Size:", icon="CON_SIZELIMIT")
+
+        row=box.row()
+        subsuffix="none"
+        op=row.operator(UVC_Operator_rename.bl_idname, text="None")
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=""
+
+        subsuffix="Small"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+        
+        subsuffix="Medium"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Large"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Color:", icon="COLOR")
+
+        row=box.row()
+        subsuffix="Gray"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="White"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Black"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        row=box.row()
+        subsuffix="Red"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Green"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Blue"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        
+        row=box.row()
+        subsuffix="Yellow"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Orange"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Orange"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Purple"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Class (Main):", icon="PMARKER_ACT")
+
+        row=box.row()
+        
+        subsuffix="Base"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Raw"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="Main"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Class (Sub):", icon="KEYFRAME_HLT")
+
+        row=box.row()
+
+        subsuffix="Extra"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Sub"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="Alt"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Direction (Sky):", icon="OBJECT_ORIGIN")
+
+        row=box.row()
+
+        subsuffix="North"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="South"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="East"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="West"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Direction (Relative):", icon="ORIENTATION_LOCAL")
+
+        row=box.row()
+
+        subsuffix="Top"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Bottom"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="Left"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Right"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix       
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Timestamp:", icon="TIME")
+
+        row=box.row()
+
+        subsuffix="Pre"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Current"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="After"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Later"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix  
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Marks:", icon="BOOKMARKS")
+
+        row=box.row()
+
+        subsuffix="New"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Temp"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="Placeholder"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Test"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix  
+
+    
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Part:", icon="TRACKER")
+
+        row=box.row()
+
+        subsuffix="Beginn"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Middle"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="End"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+            
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="State:", icon="PIVOT_BOUNDBOX")
+
+        row=box.row()
+
+        subsuffix="Open"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Closed"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="Exposed"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Quality:", icon="META_DATA")
+
+        row=box.row()
+
+        subsuffix="Broken"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Damaged"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="Intact"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+
 
 # operator UVC_Operator_selectByGroup
 class UVC_Operator_selectByGroup(bpy.types.Operator):
@@ -301,6 +745,56 @@ class UVC_Operator_selectByGroupTool(bpy.types.Operator):
         selectByGroup(self, context)
 
         return {'FINISHED'}
+    
+class UVC_Operator_rename(bpy.types.Operator):
+    """ OPERATOR
+    Adds a Panel
+    """
+    bl_idname = "anifanpostuptools.rename"
+    bl_label = "Rename"
+
+    PreFix: bpy.props.StringProperty(name="Prefix", default="")
+    Suffix: bpy.props.StringProperty(name="Suffix", default="") 
+    Suffix_Sub: bpy.props.StringProperty(name="Suffix Sub", default="")
+    
+    def execute(self, context):
+        bpy.ops.ed.undo_push(message="Rename")
+        rename (self=self, context=context)
+        return {'FINISHED'}
+    
+def rename(self, context):
+    # Get active Objects
+    selected_Objects = bpy.context.selected_objects
+
+    # Get Prefix and Suffix from Operator
+    prefix = self.PreFix
+    suffix = self.Suffix
+    suffix_Sub = self.Suffix_Sub
+
+    prefixIsSet = False
+    suffixIsSet = False
+    suffix_SubIsSet = False
+
+    if not prefix == "":
+        prefixIsSet = True
+
+    if not suffix == "":
+        suffixIsSet = True
+
+    if not suffix_Sub == "":
+        suffix_SubIsSet = True
+
+    # Select the objects you want to rename
+    selected_objects = bpy.context.selected_objects
+    for obj in selected_objects:
+        new_name = prefix if prefixIsSet else ""
+        if suffixIsSet:
+            new_name += f"_{suffix}" if prefixIsSet else suffix
+        if suffix_SubIsSet:
+            new_name += f"_{suffix_Sub}" if new_name else suffix_Sub
+        obj.name = new_name
+        
+        
 
 class UVC_Operator_transformByGroupTool(bpy.types.Operator):
     """ OPERATOR
@@ -486,6 +980,18 @@ class UVC_Operator_splitnormals(bpy.types.Operator):
         splitNormals(self=self, context=ctx)
         return {'FINISHED'}
     
+class UVC_Operator_cleanupsharps(bpy.types.Operator):    
+    """ OPERATOR Adds a Panel"""
+
+
+    bl_idname = "wm.uvc_cleanupsharps"
+    bl_label = "Cleans, Sharps, Splits and Shading"
+
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Cleanup Sharps")
+        cleanupSharpsAndSplits(self=self, context=ctx)
+        return {'FINISHED'}
+    
     
 class UVC_Operator_rotate90DegL(bpy.types.Operator):    
     """ OPERATOR Adds a Panel"""
@@ -566,6 +1072,7 @@ def splitNormals_dummy(self, context):
 class TTB_Data_Settings(bpy.types.PropertyGroup):
     """Stores Settings"""
 
+    extendsplitnormalmenu: bpy.props.BoolProperty(name="Expand",description="Expand more Buttons",default=True)
 
     direction: bpy.props.EnumProperty(
         items=[
@@ -1198,7 +1705,6 @@ class Settingsdata(bpy.types.PropertyGroup):
     my_property: bpy.props.StringProperty(name="My Property")
     flicktimeline: bpy.props.BoolProperty(name="Flick Timeline",description="Enable or disable flicking the timeline",default=True)
 
-
     debuggingsubmenu: bpy.props.EnumProperty(
         items=[
             ('none', 'None', 'Hide Menus'),
@@ -1215,12 +1721,21 @@ class Settingsdata(bpy.types.PropertyGroup):
         description="Which type of Debugging Menu to use",
         default='none'
     )
+
     
 class Tooldata(bpy.types.PropertyGroup):
-    """Tool storage for Bonery addon"""
+    """Tool storage for Bonery module"""
     my_tool: bpy.props.PointerProperty(type=bpy.types.Object, name="My Tool")
     key_data: bpy.props.CollectionProperty(type=Keydata, name="Key Data")
     active_keydata : bpy.props.IntProperty(name="Active Index", default=0)
+
+
+class Tooldata_Renamer(bpy.types.PropertyGroup):
+    """Tool storage for Renamer module"""
+    Prefix : bpy.props.StringProperty(name="Prefix", default="")
+    Suffix : bpy.props.StringProperty(name="Suffix", default="")
+
+
 
 
 #region <Utility> <Methods>
@@ -1237,6 +1752,7 @@ def register():
     #setattr(bpy.types.Scene, "uv_palettes_settings_data", bpy.props.PointerProperty(name="UV Palettes settings data", type=UVC_Data_Settings))
     setattr(bpy.types.Scene, "bonery_settings_data", bpy.props.PointerProperty(name="UV Palettes settings data", type=Settingsdata))
     setattr(bpy.types.Scene, "bonery_tools_data", bpy.props.PointerProperty(name="UV Palettes settings data", type=Tooldata))
+    setattr(bpy.types.Scene, "bonery_tools_data_renamer", bpy.props.PointerProperty(name="UV Palettes settings data", type=Tooldata_Renamer))
     setattr(bpy.types.Scene, "bonery_vertex_group_data", bpy.props.PointerProperty(name="UV Palettes settings data", type=VertexGroupData))
     setattr(bpy.types.Scene, "bonery_vertex_position_data", bpy.props.PointerProperty(name="UV Palettes settings data", type=VertexPositionData))
     #Generic Tools
