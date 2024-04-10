@@ -220,7 +220,80 @@ class UVC_PT_extratools_2(uvc_extratoolpanel, bpy.types.Panel):
         row=box.row()   
         op=row.operator(UVC_Operator_rotate90DegR.bl_idname, text="Rotate R")
         row=box.row()   
+        
+        #Create Operator to fix the rotation of the object by selected face normal
+        #create one operator that allows to fix x,y,z, or all axis
+        
+        #Operator
+        row=box.row()
+        row.label(text="Fix Rotation by Face Normal:")
+        row=box.row()
+        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="X Axis")
+        op.axis = 'X'
+        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="Y Axis")
+        op.axis = 'Y'
+        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="Z Axis")
+        op.axis = 'Z'
+        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="All Axis")
+        op.axis = 'A'
 
+#Operator
+class UVC_Operator_fixRotation(bpy.types.Operator):
+    """ OPERATOR
+    Adds a Panel
+    """
+    bl_idname = "anifanpostuptools.fixrotation"
+    bl_label = "Fix Rotation"
+    
+    #create enums
+    axis: bpy.props.EnumProperty(
+        items=[
+            ('X', "X Axis", ""),
+            ('Y', "Y Axis", ""),
+            ('Z', "Z Axis", ""),
+            ('A', "All Axis", ""),
+        ],
+        name="Axis",
+        description="Select the Axis to fix",
+        default='A'
+    )
+    
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Fixing Rotation")
+        fixRotation(self=self, ctx=ctx)
+        return {'FINISHED'}
+    
+def fixRotation(self, ctx):
+    #get selected object and make sure in edit mode
+    obj = bpy.context.active_object
+    bpy.ops.object.mode_set(mode='EDIT')
+    
+    #get the selected using bmesh
+    bm = bmesh.from_edit_mesh(obj.data)
+    selected = [f for f in bm.faces if f.select]
+    
+    #rotate the object by the selected face normal so the normal is in the direction of the axis of the world
+    for face in selected:
+        normal = face.normal
+        if self.axis == 'X':
+            target = Vector((1, 0, 0))
+        elif self.axis == 'Y':
+            target = Vector((0, 1, 0))
+        elif self.axis == 'Z':
+            target = Vector((0, 0, 1))
+        elif self.axis == 'A':
+            target = Vector((1, 1, 1))
+        
+        rotation = normal.rotation_difference(target)
+        
+        # Apply the rotation to the entire object
+        obj.rotation_euler = rotation.to_euler()
+    
+    # Switch back to object mode
+    bpy.ops.object.mode_set(mode='OBJECT')
+        
+        
+    
 #Autosmooth        
 class UVC_PT_extratools_3(uvc_extratoolpanel, bpy.types.Panel):
     bl_label = "Autosmooth"
@@ -714,7 +787,166 @@ class UVC_PT_extratools_5(uvc_extratoolpanel, bpy.types.Panel):
         op.Suffix=Tooldata_Renamer.Suffix
         op.Suffix_Sub=subsuffix
 
+#create another panel
+class UVC_PT_extratools_6(uvc_extratoolpanel, bpy.types.Panel):
+    bl_label = "UV Optimizer"
+    bl_parent_id = "anifanpostuptools_PT_extratools"
+    
+    
+    def draw(self, context):
+        layout = self.layout
+        box = layout.box() #NEW BOX
+        row=box.row()
+        
+        settingsdata = bpy.context.scene.ttb_settings_data
+        
+       
+#Operator createOptimizedUV
+class UVC_Operator_createOptimizedUV(bpy.types.Operator):
+    """ OPERATOR
+    Adds a Panel
+    """
+    bl_idname = "anifanpostuptools.createoptimizeduv"
+    bl_label = "Create Optimized UV"
+    
+    def execute(self, context):
+        bpy.ops.ed.undo_push(message="Create Optimized UV")
+        createOptimizedUV(self, context)
+        return {'FINISHED'}
 
+
+def createOptimizedUV(self, context):
+    # Get active Objects
+    selected_Objects = bpy.context.selected_objects
+
+    # Select the objects you want to rename
+    selected_objects = bpy.context.selected_objects
+    for obj in selected_objects:
+        #cache the old uv in a list of Islands
+        uvIslands = []
+        for uv in obj.data.uv_layers.active.data:
+            uvIslands.append(uv.uv)
+            
+        #add new uv called "Optimized" if not exists
+        if not "Optimized" in obj.data.uv_layers:
+            obj.data.uv_layers.new(name="Optimized")
+            
+        #set the new uv to active
+        obj.data.uv_layers.active = obj.data.uv_layers["Optimized"]
+        
+        #get all images that are used in the materials of the object
+        images = []
+        for slot in obj.material_slots:
+            if slot.material:
+                for node in slot.material.node_tree.nodes:
+                    if node.type == "TEX_IMAGE":
+                        images.append(node.image)
+                        
+        #Create dicts for images, uvIslands and pixels parented to each other
+        uvdict = {}
+       
+       
+        #convert pixels into 2 dimensional array make sure the array has the same pixel position as the uvs
+        pixels = []
+        # Get the size of one dimension (assuming the image is a square)
+        size = int(np.sqrt(len(image.pixels)))
+
+        # Convert pixels into 2 dimensional array
+        pixels = np.array(image.pixels).reshape(size, size)
+                    
+                        
+                        
+        # Iterate all islands
+        for i, uv in enumerate(uvIslands):
+            imageDict = {}
+            # Iterate all images
+            for image in images:
+                uvIslandDict = {}
+                #iterate faces of the island
+             
+                #iterate x and y of the pixels
+                for x in range(size):
+                    for y in range(size):
+                        pixelDict = {
+                            'top': 0,
+                            'bottom': 0,
+                            'left': 0,
+                            'right': 0,
+                            
+                            #average difference of the top, bottom, left and right pixel
+                            'average': 0,
+                            
+                            #3D vector
+                            'orientation': (0, 0),
+                            'straigthness': 0
+                            
+                        }
+                        pixel = pixels[x][y]
+                       
+                        #add the difference to the top , bottom , left and right pixel to a variable      
+                        top =  pixel - pixels[x][y+1] 
+                        bottom =  pixel - pixels[x][y-1]
+                        left =  pixel - pixels[x-1][y]
+                        right =  pixel - pixels[x+1][y]
+                                   
+                        difference = top + bottom + left + right
+                        difference = difference / 4
+                        
+                        #calculate a 2d vector into the direction with the highest difference uusing math
+                        orientation = (top - bottom, left - right)
+                        #normalize
+                        orientation = orientation / np.linalg.norm(orientation)
+                        
+                        straigthness = abs(pixel['orientation'][0] - 0.5) + abs(pixel['orientation'][1] - 0.5)
+                        
+                        #add the differences to the pixelDict
+                        pixelDict['top'] = top
+                        pixelDict['bottom'] = bottom
+                        pixelDict['left'] = left
+                        pixelDict['right'] = right
+                        
+                        #add the average difference to the pixelDict
+                        pixelDict['average'] = difference
+                        
+                        #add the orientation to the pixelDict
+                        pixelDict['orientation'] = orientation
+                        
+                        # Add the straigthness to the pixelDict
+                        pixelDict['straigthness'] = straigthness
+                                           
+                        pixelDict['p'+ str(x) +"/"+ str(y)] = pixelDict
+                        # Add the pixelDict to the uvIslandDict
+                        uvIslandDict['pixel'] = pixelDict
+                        
+                        
+                        
+                    #cacululate the average orientation of all pixels 
+                    averageOrientation = (0, 0)
+                    straigthness=0
+                    mindifference=0
+                    maxdifference=0
+                    
+                    for pixel in uvIslandDict['pixel']:
+                        averageOrientation += pixel['orientation']
+                        
+                        #calculate how much the vectors are straight to left or right or top or bottom
+                        #substract them to get how much the vectors are, the closer to 0.5 the less straight they are
+                        
+                        
+                        
+                        
+                    
+                    # Add the uvIslandDict to the imageDict
+                imageDict['uvIslandDict'] = uvIslandDict
+            # Add the imageDict to the uvdict using update
+            uvdict.update(imageDict)
+                   
+
+                    
+                        
+                
+                        
+                        
 
 # operator UVC_Operator_selectByGroup
 class UVC_Operator_selectByGroup(bpy.types.Operator):
