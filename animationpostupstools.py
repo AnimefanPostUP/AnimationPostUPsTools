@@ -15,10 +15,8 @@ import importlib.util
 import re
 import glob
 
-#added for functionbuffering
-if(0>1):
-    from function_names import *
 
+    
 
 
 
@@ -42,11 +40,7 @@ if(0>1):
     
 #     return functions
 
-#Function Importer
 
-#MODULE_INSTALLER_SPACE_START_00000000
-
-#MODULE_INSTALLER_SPACE_END_00000001
 
 
 ''' DEPRECATED SIDELOADER; USE MODULE INSTALL SCRIPT INSTEAD!
@@ -81,6 +75,10 @@ def inject_code_from_file(file_name):
     with open(file_name, 'r') as file:
         code = file.read()
     exec(code, globals())
+def get_vertexpositiondata_by_id(vertex_group_data, vertex_id):
+(): return None
+def get_vertexpositiondata_by_id(vertex_group_data, vertex_id):
+(): return None
 
 # Now you can use testfunc directly
 def sideloader():
@@ -1375,6 +1373,32 @@ class Bonery_UL_keydata(bpy.types.UIList):
         else:
             layout.label(text="Invalid Keydata")
             
+            
+
+#Important Getters
+def get_current_keydata(context):
+    """Get the current active keydata"""
+    tool_data = context.scene.bonery_tools_data
+    if tool_data.active_keydata < len(tool_data.key_data):
+        return tool_data.key_data[tool_data.active_keydata]
+    return None
+
+def get_current_vertexgroupdata(context):
+    """Get the current active vertexgroupdata"""
+    tool_data = context.scene.bonery_tools_data
+    if tool_data.active_keydata < len(tool_data.key_data):
+        key_data = tool_data.key_data[tool_data.active_keydata]
+        if key_data.active_vertexgroupdata < len(key_data.vertex_group_data):
+            return key_data.vertex_group_data[key_data.active_vertexgroupdata]
+    return None
+
+def get_current_settingsdata(context):
+    return bpy.context.scene.bonery_settings_data
+
+def get_current_tooldata_renamer(context):
+    return bpy.context.scene.bonery_tools_data_renamer
+            
+            
 #List of VertexgroupData inside the selected Keydata  
 class Bonery_UL_vertexgroupdata(bpy.types.UIList):
     """UIList for displaying VertexgroupData"""
@@ -1990,7 +2014,1799 @@ class Tooldata_Renamer(bpy.types.PropertyGroup):
     Suffix : bpy.props.StringProperty(name="Suffix", default="")
 
 
+#Function Importer
 
+
+####################################################################################################
+#functionimporttest.py
+####################################################################################################
+
+def sideloadtester():
+    print("SIDELOAD Importer Module Operational!")
+    return
+
+####################################################################################################
+#01_module_ma_matrices.py
+####################################################################################################
+
+
+
+#Combiner for the Transformation Matrix
+def combine_into_transformation_matrix(translation, scale, rotation):
+    """Combine translation, scale, and rotation into a transformation matrix"""
+    # Create 4x4 transformation matrix
+    transformation_matrix = np.eye(4)
+
+    # Set translation
+    transformation_matrix[:3, 3] = translation
+
+    # Set scale
+    transformation_matrix[:3, :3] *= scale
+
+    # Set rotation
+    transformation_matrix[:3, :3] = np.dot(transformation_matrix[:3, :3], rotation)
+
+    return transformation_matrix
+
+    
+#Calculation of the Center of the Vertex Positions
+def get_vertex_Center(vertex_positions):
+    """Get the center of the given vertex positions"""
+    center = mathutils.Vector((0, 0, 0))
+    for vertex_position in vertex_positions:
+        center += vertex_position
+    center /= len(vertex_positions)
+    return center
+
+#Detects Changes in Vertex Positions to detect changes in scale
+def calculate_average_distance(vertex_positions, center):
+    """Calculate the average distance of vertices from the center"""
+    distances = [np.linalg.norm(vertex_position - center) for vertex_position in vertex_positions]
+    return sum(distances) / len(distances)
+
+#Calculation of Rotation Changes
+def calculate_rotation_matrix(old_positions, new_positions, old_center, new_center):
+    """Calculate the rotation matrix from old positions to new positions"""
+    # Subtract centers from positions
+    old_positions_centered = [pos - old_center for pos in old_positions]
+    new_positions_centered = [pos - new_center for pos in new_positions]
+
+    # Convert lists to numpy arrays
+    old_positions_centered = np.array(old_positions_centered)
+    new_positions_centered = np.array(new_positions_centered)
+
+    # Calculate rotation matrix using SVD
+    H = np.dot(new_positions_centered.T, old_positions_centered)
+    U, S, Vt = np.linalg.svd(H)
+    rotation_matrix = np.dot(Vt.T, U.T)
+
+    return rotation_matrix
+
+#Caculculation to find Translation
+def calculateCenterOfPoints(points, axis=0):
+    return  np.mean(points, axis)
+
+#Original Function currently that is used.
+def calculate_vertex_transformation(src_points, dst_points ):
+       # Subtract centroids
+    src_center = calculateCenterOfPoints(src_points)
+    dst_center = calculateCenterOfPoints(dst_points)
+    
+    src_points_centered = src_points - src_center
+    dst_points_centered = dst_points - dst_center
+
+    # Compute rotation
+    H = np.dot(src_points_centered.T, dst_points_centered)
+    U, S, Vt = np.linalg.svd(H)
+    rotation_matrix = np.dot(Vt.T, U.T)
+
+    # Check for reflection
+    if np.linalg.det(rotation_matrix) < 0:
+        Vt[-1, :] *= -1
+        rotation_matrix = np.dot(Vt.T, U.T)
+
+    # Ensure smallest rotation
+    d = (np.linalg.det(Vt) * np.linalg.det(U)) < 0.0
+    if d:
+        S[-1] = -S[-1]
+        Vt[-1, :] *= -1
+        rotation_matrix = np.dot(Vt.T, U.T)
+
+    # Check for reflection
+    if np.linalg.det(rotation_matrix) < 0:
+        # Flip the sign of the last column of Vt
+        Vt[-1, :] *= -1
+        rotation_matrix = np.dot(Vt.T, U.T)
+        
+    #rotation_matrix = np.linalg.inv(rotation_matrix)
+    
+    # Compute scale
+    src_points_transformed = np.dot(src_points_centered, rotation_matrix)
+    scale_x = np.linalg.norm(dst_points_centered[:, 0]) / np.linalg.norm(src_points_transformed[:, 0])
+    scale_y = np.linalg.norm(dst_points_centered[:, 1]) / np.linalg.norm(src_points_transformed[:, 1])
+    scale_z = np.linalg.norm(dst_points_centered[:, 2]) / np.linalg.norm(src_points_transformed[:, 2])
+    scale_matrix = np.diag([scale_x, scale_y, scale_z])
+    
+    # Debug non-matrix values
+    print("Position:", dst_center - src_center)
+    print("Scale:", scale_matrix)
+    print("Rotation:", rotation_matrix)
+
+
+    # Create transformation matrix
+    transformation_matrix = np.eye(4)
+    transformation_matrix[:3, :3] = np.dot(scale_matrix, rotation_matrix)
+    transformation_matrix[:3, 3] = dst_center - src_center
+    
+    #transformation_matrix[:3, :3] = rotation_matrix
+    #transformation_matrix[:3, 3] = dst_center - rotation_matrix @ src_center
+    
+
+    return transformation_matrix, src_center, dst_center
+
+
+def multiply_matrix(matrix, positions):
+    """
+    Multiply a matrix by a list of positions.
+    
+    Args:
+        matrix (list[list[float]]): The matrix to be multiplied.
+        positions (list[list[float]]): The list of positions to be multiplied.
+    
+    Returns:
+        list[list[float]]: The resulting positions after multiplication.
+    """
+    result = []
+    for position in positions:
+        new_position = [sum(a * b for a, b in zip(row, position)) for row in matrix]
+        result.append(new_position)
+    return result
+
+####################################################################################################
+#02_operators_debug.py
+####################################################################################################
+
+
+
+
+ 
+
+def debug_write_vertex_coordinated(self, context):
+        # Get the selected object
+    obj = context.object
+    
+    # Check if the selected object is a mesh
+    if obj and obj.type == 'MESH':
+        # Get the mesh data
+        mesh = obj.data
+        
+        # Iterate over all vertices and print their positions
+        for vertex in mesh.vertices:
+            print(f"Vertex {vertex.index}: {vertex.co}")
+            
+def debug_setupBone(self, context):
+    # Get the selected object
+    obj = context.object
+    
+    armature = createArmatureifNotExists(bpy.context, obj)
+    centerposition = convert_to_armature_space(armature, Vector((0, 0, 0)), obj)
+    groupname, group= createIncrementedVertexgroupIfNotExists(obj, "root_base")
+    bone = createBoneifNotExists(armature, groupname, centerposition)
+    vertex_indices = getAllVertexIndices(obj)
+    applyVertexgroupToMesh(obj, groupname, vertex_indices)
+    
+    # Check if the selected object is a mesh
+    if obj and obj.type == 'MESH':
+        # Get the mesh data
+        mesh = obj.data
+        
+        # Iterate over all vertices and print their positions
+        for vertex in mesh.vertices:
+            # Apply the bone's matrix to the vertex position
+            transformed_position = bone.matrix @ vertex.co
+            print(f"Vertex {vertex.index}: {transformed_position}")
+
+def debug_print_vertex_withBoneAnimation(self, context):
+    # Get the selected object
+    obj = context.object
+    if obj and obj.type == 'MESH':
+        armature = createArmatureifNotExists(bpy.context, obj)
+        centerposition = convert_to_armature_space(armature, Vector((0, 0, 0)), obj)
+        groupname, group= createIncrementedVertexgroupIfNotExists(obj, "root_base")
+        bone = createBoneifNotExists(armature, groupname, centerposition)
+        vertex_indices = getAllVertexIndices(obj)
+        applyVertexgroupToMesh(obj, groupname, vertex_indices)
+        matrix=getMatrixOfAnimation_PoseBonespace(obj, armature, group)
+        
+        positions = getPositionFromIndices(obj, vertex_indices)
+        
+        animated_positions=multiply_matrix(matrix, positions)
+        print ("Single Bone Animation: "+str(animated_positions))
+        
+        fullyanimated_positions=apply_transformations (obj, armature, vertex_indices, animated_positions)
+        print ("Full Animation: "+str(fullyanimated_positions))
+        
+def debug_print_applyAnimation(self, context):
+    # Get the selected object
+    obj = context.object
+    if obj and obj.type == 'MESH':
+        armature = createArmatureifNotExists(bpy.context, obj)
+        centerposition = convert_to_armature_space(armature, Vector((0, 0, 0)), obj)
+        groupname, group= createIncrementedVertexgroupIfNotExists(obj, "root_base")
+        bone = createBoneifNotExists(armature, groupname, centerposition)
+        vertex_indices = getAllVertexIndices(obj)
+        applyVertexgroupToMesh(obj, groupname, vertex_indices)
+        matrix=getMatrixOfAnimation_PoseBonespace(obj, armature, group)
+        
+        positions = getPositionFromIndices(obj, vertex_indices)
+        
+        animated_positions=multiply_matrix(matrix, positions)
+        print ("Single Bone Animation: "+str(animated_positions))
+        
+        fullyanimated_positions=apply_transformations (obj, armature, vertex_indices, animated_positions)
+        print ("Full Animation: "+str(fullyanimated_positions))
+        
+        set_vertex_positions_4dsafe(obj, vertex_indices, fullyanimated_positions)
+        removeArmatureAndVertexgroups (obj, armature)
+        set_vertex_positions_4dsafe(obj, vertex_indices, fullyanimated_positions)
+        
+        
+        
+
+####################################################################################################
+#03_operators_generic.py
+####################################################################################################
+
+
+
+####################################################################################################
+#20_module_bl_current_obj_getters.py
+####################################################################################################
+
+def get_current_Vertcount():
+    """ !FUNCTION!
+    Returns the Amount of Vertices in the Current Mesh
+    
+    :return: Amount of Vertices in the Current Mesh
+    :rtype: int
+    """
+    functionname="GETCURRENTVERTCOUNT"
+    mesh = bpy.context.object.data
+    if mesh:
+        return len(mesh.vertices)
+    else:
+        return 0
+
+####################################################################################################
+#21_module_op_pivot.py
+####################################################################################################
+
+def find_most_facing_axis(vector):
+    normalized_vector = vector.normalized()
+    max_component = max(abs(comp) for comp in normalized_vector)
+    
+    if normalized_vector.x == max_component:
+        return mathutils.Vector((1.0, 0.0, 0.0))
+    elif normalized_vector.x == -max_component:
+        return mathutils.Vector((-1.0, 0.0, 0.0))
+    elif normalized_vector.y == max_component:
+        return mathutils.Vector((0.0, 1.0, 0.0))
+    elif normalized_vector.y == -max_component:
+        return mathutils.Vector((0.0, -1.0, 0.0))
+    elif normalized_vector.z == max_component:
+        return mathutils.Vector((0.0, 0.0, 1.0))
+    else:
+        return mathutils.Vector((0.0, 0.0, -1.0))
+
+def setPivot(self, context):
+
+    
+    height=self.height
+    direction=self.direction
+    transformspace=self.transformspace
+    
+    if(not height):
+        height="mm"
+    
+    if(not direction):
+        height="zn"
+    
+    if(not transformspace):
+        height="objectspace"
+    
+    Xpos=False
+    Xneg=False
+  
+    Ypos=False
+    Yneg=False
+    
+    Zpos=False
+    Zneg=False
+    
+    tl=False
+    tm=False 
+    tr=False
+    
+    ml=False  
+    mm=False
+    mr=False
+    
+    bl=False  
+    bm=False
+    br=False
+
+    objectspace=False
+    worldspace=False
+    auto=False
+    
+    
+    if( transformspace=="objectspace" ):
+        objectspace=True
+            
+    if( transformspace=="worldspace" ):
+        worldspace=True
+        
+    if( transformspace=="auto" ):
+        auto=True  
+        
+                     
+    if( direction=="x" ):
+        print("Direction : X")
+        Xpos=True
+    if( direction=="xn" ):
+        print("Direction : -X")
+        Xneg=True
+        
+    if( direction=="y" ):
+        print("Direction : Y")
+        Ypos=True
+    if( direction=="yn" ):
+        print("Direction : -Y")
+        Yneg=True
+                    
+    if( direction=="z" ):
+        print("Direction : Z")
+        Zpos=True
+    if( direction=="zn" ):
+        print("Direction : -Z")
+        Zneg=True
+        
+             
+    if( height=="tl" ):
+        print("Top Left")
+        tl=True
+    if( height=="tm" ):
+        print("Top Mid")
+        tm=True  
+    if( height=="tr" ):
+        print("Top Right")
+        tr=True
+    if( height=="ml" ):
+        print("Mid Left")
+        ml=True             
+    if( height=="mm" ):
+        print("Mid Mid")
+        mm=True
+    if( height=="mr" ):
+        print("Mid Right")
+        mr=True  
+    if( height=="bl" ):
+        print("Bottom Left")
+        bl=True               
+    if( height=="bm" ):
+        print("Bottom Mid")
+        bm=True
+    if( height=="br" ):
+        print("Bottom Right")
+        br=True
+    
+    if not (worldspace or objectspace or auto):
+        objectspace=True
+        
+    if not (tl or tm or tr or ml or mm or mr or bl or bm or br):
+        mm=True
+        
+    if not(Xpos or Xneg or Ypos or Yneg or Zpos or Zneg):
+        Zneg=True
+           
+
+    automatrixinit=mathutils.Euler((0, 0, 0), 'XYZ')
+    
+    selected_Objects=bpy.context.selected_objects
+    wasInObjectmode=True
+    
+    #go to edit mode if not already 
+    if bpy.context.mode != 'OBJECT':
+        wasInObjectmode=False
+        bpy.ops.object.mode_set(mode='OBJECT')
+    
+    setSelectionforAllObjects(selected_Objects, False)    
+
+    if( height!="ct" ):
+        #Correct Alignments before Setting Origins again
+        for obj in selected_Objects:
+            obj.select_set(True) 
+        # Check if the object is a mesh
+            if obj and obj.type == 'MESH':
+                # Get the mesh data
+                mesh = obj.data
+                
+                # Iterate over vertices and calculate the sum
+                vert_sum = mathutils.Vector((0.0, 0.0, 0.0))
+                for vert in mesh.vertices:
+                    vert_sum += vert.co
+                
+                # Calculate the average
+                avg_position_local  = vert_sum / len(mesh.vertices)
+                
+                # Set the pivot point to the average position
+                bpy.context.scene.cursor.location = obj.matrix_world @ avg_position_local
+                bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+            obj.select_set(False) 
+        bpy.context.view_layer.update()   
+    
+    
+    for obj in selected_Objects:
+        obj.select_set(True) 
+    # Check if the object is a mesh
+
+        if obj and obj.type == 'MESH':
+            # Get the mesh data
+            mesh = obj.data
+            First=True                
+            axies_x_Min=0
+            axies_x_Max=0
+            axies_y_Min=0
+            axies_y_Max=0
+            axies_z_Min=0
+            axies_z_Max=0
+            
+            
+
+                    
+            if(auto and height!="ct"):
+                pivot = obj.matrix_world @  mathutils.Vector((0.0, 0.0, 0.0)) #get Pivot
+                
+                Xpos=False
+                Xneg=False
+                Ypos=False
+                Yneg=False
+                Zpos=False
+                Zneg=False
+                
+                if( direction=="x" ):
+                    directionvector = mathutils.Vector((1.0, 0.0, 0.0) ) #Create Upwarts Vector
+                    pivotRotationOnly= (obj.matrix_world.inverted() @(directionvector+ pivot    ))   
+                    most_facing_axis = find_most_facing_axis(pivotRotationOnly) #Return Vector with closed axies  
+           
+                if( direction=="xn" ):
+                    directionvector = mathutils.Vector((-1.0, 0.0, 0.0) ) #Create Upwarts Vector
+                    pivotRotationOnly= (obj.matrix_world.inverted() @(directionvector+ pivot    ))     
+                    most_facing_axis = find_most_facing_axis(pivotRotationOnly) #Return Vector with closed axies  
+          
+                if( direction=="y" ):
+                    directionvector = mathutils.Vector((0.0, 1.0, 0.0) ) #Create Upwarts Vector
+                    pivotRotationOnly= (obj.matrix_world.inverted() @(directionvector+ pivot    ))        
+                    most_facing_axis = find_most_facing_axis(pivotRotationOnly) #Return Vector with closed axies  
+         
+                if( direction=="yn" ):
+                    directionvector = mathutils.Vector((0.0, -1.0, 0.0) ) #Create Upwarts Vector
+                    pivotRotationOnly= (obj.matrix_world.inverted() @(directionvector+ pivot    ))        
+                    most_facing_axis = find_most_facing_axis(pivotRotationOnly) #Return Vector with closed axies  
+         
+                if( direction=="z" ):
+                    directionvector = mathutils.Vector((0.0, 0.0, 1.0) ) #Create Upwarts Vector
+                    pivotRotationOnly= (obj.matrix_world.inverted() @(directionvector+ pivot    ))        
+                    most_facing_axis = find_most_facing_axis(pivotRotationOnly) #Return Vector with closed axies  
+      
+                if( direction=="zn" ):                    
+                    directionvector = mathutils.Vector((0.0, 0.0, -1.0) ) #Create Upwarts Vector
+                    pivotRotationOnly= (obj.matrix_world.inverted() @(directionvector+ pivot    ))       
+                    most_facing_axis = find_most_facing_axis(pivotRotationOnly) #Return Vector with closed axies  
+       
+                    
+                if(most_facing_axis.x > 0.5):
+                    print("remap to x")
+                    Xpos=True
+                if(most_facing_axis.x < -0.5):
+                    print("remap to -x")
+                    Xneg=True
+                if(most_facing_axis.y > 0.5):
+                    print("remap to y")
+                    Ypos=True
+                if(most_facing_axis.y < -0.5):
+                    print("remap to -y")
+                    Yneg=True   
+                if(most_facing_axis.z > 0.5):
+                    print("remap to z")
+                    Zpos=True
+                if(most_facing_axis.z < -0.5):
+                    print("remap to -z")
+                    Zneg=True
+                
+      
+                   
+                print("target: "+str(most_facing_axis))
+                       
+
+            # Iterate over vertices and calculate the sum
+            vert_sum = mathutils.Vector((0.0, 0.0, 0.0))
+            for vert in mesh.vertices:
+                
+                if objectspace:
+                    co = vert.co
+                
+                if worldspace:
+                    co = obj.matrix_world @ vert.co
+                    
+                if auto:                    
+                    co = vert.co
+                
+
+                if(First):
+                    First=False
+                    axies_x_Min=co.x
+                    axies_x_Max=co.x
+                    axies_y_Min=co.y
+                    axies_y_Max=co.y
+                    axies_z_Min=co.z
+                    axies_z_Max=co.z
+                    vert_sum += co
+                else:
+                    #override if lower or higher      
+                    if co.x < axies_x_Min:
+                        axies_x_Min = co.x
+                    if co.x > axies_x_Max:
+                        axies_x_Max = co.x
+                        
+                    if co.y < axies_y_Min:
+                        axies_y_Min = co.y
+                    if co.y > axies_y_Max:
+                        axies_y_Max = co.y
+                        
+                    if co.z < axies_z_Min:
+                        axies_z_Min = co.z
+                    if co.z > axies_z_Max:
+                        axies_z_Max = co.z
+                        
+                    vert_sum += co
+                                
+                                            
+            # Calculate the average
+            if( height=="ct" ):
+                position_local  = vert_sum / len(mesh.vertices)
+            
+                if objectspace:
+                    # Set the pivot point to the average position
+                    bpy.context.scene.cursor.location = obj.matrix_world @ position_local
+                    bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+                if worldspace:
+                    bpy.context.scene.cursor.location = position_local
+                    bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+                if auto:
+                    bpy.context.scene.cursor.location = position_local
+                    bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+            
+            else:
+                position_local = mathutils.Vector((0.0, 0.0, 0.0))
+                
+                # Erase Axies to set the Direction
+                if( Xpos ):
+                    position_local.x=axies_x_Max
+                if( Xneg ):
+                    position_local.x=axies_x_Min
+                    
+                if( Ypos ):
+                    position_local.y=axies_y_Max
+                if( Yneg ):
+                    position_local.y=axies_y_Min
+                                
+                if( Zpos ):
+                    position_local.z=axies_z_Max
+                if( Zneg ):
+                    position_local.z=axies_z_Min
+                    
+                #Write Axies that are used to calculate    
+                
+                if(Xpos or Xneg or Ypos or Yneg):
+                     #Set Height
+                    if(tl or tm or tr):
+                       position_local.z=axies_z_Max 
+                       
+                    if(ml or mm or mr):
+                        position_local.z=(axies_z_Min+ axies_z_Max)/2
+                        
+                    if(bl or bm or br):
+                        position_local.z=axies_z_Min
+                    
+                if(Xpos or Xneg ):
+                                                          
+                    #Set Axies
+                    if(tl or ml or tl):
+                       position_local.y=axies_y_Max 
+                       
+                    if(tm or mm or bm):
+                        position_local.y=(axies_y_Min+ axies_y_Max)/2
+                        
+                    if(tr or mr or br):
+                        position_local.y=axies_y_Min
+                        
+                if(Ypos or Yneg):                  
+                        
+                    #Set Axies
+                    if(tl or ml or tl):
+                       position_local.x=axies_x_Max 
+                       
+                    if(tm or mm or bm):
+                        position_local.x=(axies_x_Min+ axies_x_Max)/2
+                        
+                    if(tr or mr or br):
+                        position_local.x=axies_x_Min
+                        
+                        
+                    
+                if(Zpos or Zneg):
+                    
+                    if(tl or tm or tr):
+                       position_local.y=axies_y_Max 
+                       
+                    if(ml or mm or mr):
+                        position_local.y=(axies_y_Min+ axies_y_Max)/2
+                        
+                    if(bl or bm or br):
+                        position_local.y=axies_y_Min
+                        
+                    #Set Axies
+                    if(tl or ml or bl):
+                       position_local.x=axies_x_Max 
+                       
+                    if(tm or mm or bm):
+                        position_local.x=(axies_x_Min+ axies_x_Max)/2
+                        
+                    if(tr or mr or br):
+                        position_local.x=axies_x_Min
+                        
+                        
+                print(str(position_local))       
+                 
+                if(auto):
+                    bpy.context.scene.cursor.location = obj.matrix_world @ position_local
+                    #bpy.context.scene.cursor.location = automatrixfixer.inverted() @ position_local #Remove the Correctionangle from Curser to align it with the Actual Object
+                    bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+                if objectspace:
+                    # Set the pivot point to the average position
+                    bpy.context.scene.cursor.location = obj.matrix_world @ position_local
+                    bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+                if worldspace:
+                    bpy.context.scene.cursor.location = position_local
+                    bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+                    
+                
+        obj.select_set(False)         
+        
+    setSelectionforAllObjects(selected_Objects, True)        
+    
+    if wasInObjectmode  :
+        bpy.ops.object.mode_set(mode='OBJECT')
+    else :
+        bpy.ops.object.mode_set(mode='EDIT')
+ 
+    return None
+
+####################################################################################################
+#22_module_bl_selector.py
+####################################################################################################
+
+def setSelectionforAllObjects(selected_Objects, state):
+    for obj in selected_Objects:
+        obj.select_set(state) 
+    bpy.context.view_layer.update()              
+
+####################################################################################################
+#30_module_bl_image.py
+####################################################################################################
+
+def linear_to_sRGB(linear_value):
+    if linear_value <= 0.0031308:
+        sRGB_value = 12.92 * linear_value
+    else:
+        sRGB_value = 1.055 * (linear_value ** (1/2.4)) - 0.055
+    return sRGB_value
+
+def math_UVPosition_By_Tile(xt, yt, tile_count_x, tile_count_y):
+    
+    """  !METHOD!
+    Divides the UV into Tiles based on Tilecount and gets the Center Position of that Square
+
+    Keyword arguments:
+    :param int xt,yt:                       Squareposition
+    :param: int tile_count_x,tile_count_y:  Amount of Squares per Axies
+    :return: float uv_x, uv_y:              Postion on UV 0.0-1.0
+    """
+
+    
+    uv_x = (xt / tile_count_x) + (0.5 / tile_count_x)
+    uv_y = (yt / tile_count_y) + (0.5 / tile_count_y)
+    
+    #Add Debug Here?
+
+    return uv_x, uv_y
+
+def math_PixelIndex_By_TileNumber(xt, yt, width, height, tile_count_x, tile_count_y, uv_offset_x=0, uv_offset_y=0):
+    """ !METHOD! 
+    Uses the Sizes of the Texture, the Tilecount and Calculates the Index of the Pixel in the Array
+
+    Keyword arguments:
+    :param int xt,yt:                       Squareposition
+    :param float width,height:              Size of Image
+    :param: int tile_count_x,tile_count_y:  Amount of Squares per Axies
+    :return: int index:                     index of Pixel inside a Array
+    """
+        
+    mid_x = (xt * width // tile_count_x) + (width // tile_count_x // 2) + int(uv_offset_x)
+    mid_y = (yt * height // tile_count_y) + (height // tile_count_y // 2) + int(uv_offset_y)
+    index = (mid_y * width + mid_x) * 4
+
+    functionname="CalculateMiddlePixel"
+
+    printLog(src=functionname, msg="xt: " + str(xt) + " yt: " + str(yt) + " width: " + str(width) + " height: " + str(height) + " tile_count_x: " + str(tile_count_x) + " tile_count_y: " + str(tile_count_y) + " uv_offset_x: " + str(uv_offset_x) + " uv_offset_y: " + str(uv_offset_y), subtype=LOGTYPE.IN)
+    printLog(src=functionname, msg="index: " + str(index), subtype=LOGTYPE.OUT)
+     
+    return index 
+    
+def math_getTileFromUVXY(tilecountx, tilecounty, x,y):    
+    
+    """ !METHOD!
+    Calculates the Basetile from the Tilecount and the UV Coordinate
+
+    Keyword arguments:
+    xxx                       N/A #
+    """
+
+
+    segment_x = int(min(math.floor(x * tilecountx), tilecountx - 1))
+    segment_y = int(min(math.floor(y * tilecounty), tilecounty - 1))
+    #printLog(src="calculateSegment", subtype=LOGTYPE.INFO, msg="Segmentcoordinates"+str(segment_x)+"/"+str(segment_y)) 
+    
+    return segment_x,segment_y  
+   
+def math_getTileFromUV(tilecountx, tilecounty, uv):
+    """ !METHOD!
+    Calculates the Basetile from the Tilecount and the UV Coordinate
+
+    Keyword arguments:
+    xxx                       N/A #
+    """
+
+
+
+    segment_x = int(min(math.floor(uv.x * tilecountx), tilecountx - 1))
+    segment_y = int(min(math.floor(uv.y * tilecounty), tilecounty - 1))
+    #printLog(src="calculateSegment", subtype=LOGTYPE.INFO, msg="Segmentcoordinates"+str(segment_x)+"/"+str(segment_y)) 
+    
+    return segment_x,segment_y  
+
+def img_readPixel_By_Index(img, index):
+    """ !METHOD!
+    Gets the Color of a Pixel inside a Pixel Array of an Image
+
+    Keyword arguments:
+    :param Image img:                       Image to get the Pixel From
+    :return: int[4] index:                  4 Pixels representing RGBA
+    """
+    return img.pixels[index:index + 4]
+
+def readImagePixel(image, x, y):
+    """ !METHOD!
+    Reads the Pixel Data of an Image
+
+    Keyword arguments:
+    :param Image img:                       Image to get the Pixel From
+    :return: int[4] index:                  4 Pixels representing RGBA
+    """
+    
+    width = image.size[0]
+    height = image.size[1]
+    
+    index = img_getImagePixelIndex(x, y, width)
+    pixels=image.pixels[index:index + 4]
+    
+    return pixels
+
+def img_getImagePixelIndex(xt, yt, imagewidth):
+    """ !METHOD!
+    Gets the Color of a Pixel inside a Pixel Array of an Image
+
+    Keyword arguments:
+    :param Image img:                       Image to get the Pixel From
+    :return: int[4] index:                  4 Pixels representing RGBA
+    """
+    
+    return (yt * imagewidth + xt)*4
+
+def img_getTilesetPixelIndex(xt, yt, tilesizex):
+    """ !METHOD!
+    Gets the Color of a Pixel inside a Pixel Array of an Image
+
+    Keyword arguments:
+    :param Image img:                       Image to get the Pixel From
+    :return: int[4] index:                  4 Pixels representing RGBA
+    """
+    
+    return yt * (tilesizex) + xt 
+
+def math_getIndexByTile(xt, yt, tile_count_x):
+    
+    return yt * tile_count_x + xt
+
+####################################################################################################
+#40_module_bl_normals.py
+####################################################################################################
+
+def cleanupSharpsAndSplits(self, context):
+    selected_objects = bpy.context.selected_objects
+    for obj in selected_objects:
+        if obj.type == 'MESH':
+            bpy.context.view_layer.objects.active = obj
+            bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.mesh.select_all(action='SELECT')
+            bpy.ops.mesh.mark_sharp(clear=True)
+            bpy.ops.object.mode_set(mode='OBJECT')
+            bpy.ops.mesh.customdata_custom_splitnormals_clear()
+            bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.mesh.merge_normals()
+            bpy.ops.mesh.select_all(action='DESELECT')
+            bpy.ops.object.mode_set(mode='OBJECT')
+            bpy.ops.object.shade_flat()
+
+
+def smoothObjects(self, context):
+    # Shade Smooth all selected Objects
+    selected_Objects = bpy.context.selected_objects
+    for obj in selected_Objects:
+        if obj.type == 'MESH':
+            # Set the object as active
+            bpy.context.view_layer.objects.active = obj
+            # Smooth the object
+            bpy.ops.object.shade_smooth()
+            # Set autosmooth value to 0
+            obj.data.auto_smooth_angle = 0
+    bpy.context.view_layer.update()
+    
+def smoothReversedSelection(self, context):
+    bpy.ops.mesh.select_mode(type='VERT')
+    bpy.ops.mesh.select_all(action='INVERT')
+    bpy.ops.mesh.vertices_smooth()
+    bpy.ops.mesh.select_all(action='INVERT')
+
+def mergeNormals(self, context):
+    bpy.ops.mesh.select_mode(type='EDGE')
+    bpy.ops.mesh.select_all(action='SELECT')
+    bpy.ops.mesh.merge_normals()
+    bpy.ops.mesh.select_all(action='DESELECT')
+    
+    
+def splitNormals(self, context):
+    settingsdata = bpy.context.scene.ttb_settings_data
+    selectModeType = list(bpy.context.tool_settings.mesh_select_mode)
+    autosmooth= settingsdata.autosmooth
+    clear= settingsdata.cleanSplitNormals
+    activeMode=False
+    
+    isEditMode = bpy.context.mode == 'EDIT_MESH'
+  
+    
+    #check if self has angle attribute
+    if not hasattr(self, "angle"):
+        angle = settingsdata.splitangle
+        activeMode = True
+    else:
+        angle=self.angle
+        
+    
+        
+    edgecount=0      
+    selected_Objects=bpy.context.selected_objects         
+    if activeMode:
+        #count selected edges using bmesh
+        for obj in selected_Objects:
+            if not obj.type == 'MESH':
+                continue
+                
+            #get selected edges
+            me = obj.data
+            bm = bmesh.from_edit_mesh(me)
+            for edge in bm.edges:
+                if edge.select:
+                    edgecount+=1    
+
+    #Deselect objects that arent meshes
+    for obj in selected_Objects:
+        if obj.type == 'MESH':
+            obj.data.auto_smooth_angle = 360
+        else:
+            obj.select_set(False)
+           
+        
+    if clear: # Clear if needed
+        bpy.ops.mesh.customdata_custom_splitnormals_clear()    
+
+      #go to edit mode if not already 
+    if bpy.context.mode != 'EDIT_MESH':
+        wasInObjectmode=True
+        bpy.ops.object.mode_set(mode='EDIT')
+    
+    bpy.context.tool_settings.mesh_select_mode = (False, True, False)    
+        
+        
+    
+    if clear: # Clear if needed
+        bpy.ops.mesh.select_all(action='DESELECT')
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.mesh.mark_sharp(clear=True)
+        mergeNormals(self, context)
+   
+
+        
+           
+    wasInObjectmode=False
+    
+    
+
+    
+
+        
+    #Deselect all Edges first 
+    bpy.ops.mesh.select_all(action='DESELECT')
+    
+    #Select all edges with a sharp edge angle
+    bpy.ops.mesh.edges_select_sharp(sharpness=math.radians(angle))
+    
+    secondedgecount=0
+    
+    if activeMode:
+        for obj in selected_Objects:
+            if not obj.type == 'MESH':
+                continue
+                
+            me = obj.data
+            bm = bmesh.from_edit_mesh(me)
+            for edge in bm.edges:
+                if edge.select:
+                    secondedgecount+=1
+            
+    if not activeMode:
+        if edgecount>secondedgecount or edgecount<secondedgecount:
+            bpy.ops.ed.undo_push(message = "Push Undo (Split Normals Operator): "+str(abs(edgecount-secondedgecount)) + " Edges Changed")
+            #print(str(abs(edgecount-secondedgecount)))
+    
+    #Split Normals of the selected edges
+    print("splitting at angle: "+ str(angle))
+    bpy.ops.mesh.split_normals()
+    
+    if(autosmooth):
+        bpy.context.view_layer.update()
+        bpy.ops.object.mode_set(mode='EDIT')
+        smoothReversedSelection(self, context)
+        
+    #Change select mode back to original
+    bpy.ops.object.mode_set(mode='EDIT')
+    if selectModeType[0]:
+        bpy.ops.mesh.select_mode(type='VERT')
+    elif selectModeType[1]:
+        bpy.ops.mesh.select_mode(type='EDGE')
+    elif selectModeType[2]:
+        bpy.ops.mesh.select_mode(type='FACE')
+    
+    if(not activeMode):
+        #move back to original mode
+        if (isEditMode):
+            bpy.ops.object.mode_set(mode='EDIT')
+        else:
+            bpy.ops.object.mode_set(mode='OBJECT')     
+    # if not activeMode:
+    #     bpy.ops.view3d.update_edit_mesh()
+            
+    # if not wasInObjectmode:
+    #     bpy.ops.object.mode_set(mode='OBJECT')
+    # else:
+    #     bpy.ops.object.mode_set(mode='EDIT')
+
+
+####################################################################################################
+#50_module_bl_rotationtool.py
+####################################################################################################
+
+def rotate90DegL(self, context):
+    
+    selected_Objects=bpy.context.selected_objects  
+    setSelectionforAllObjects(selected_Objects, False)    
+
+    for obj in selected_Objects:
+        obj.select_set(True) 
+        
+        # Check if the object is a mesh
+        if obj and obj.type == 'MESH':
+
+            current_rotation = obj.rotation_euler
+            new_rotation_z = current_rotation.z + math.radians(90)
+            obj.rotation_euler = (current_rotation.x, current_rotation.y, new_rotation_z)
+
+            mesh = obj.data           
+            obj.select_set(False) 
+    bpy.context.view_layer.update()   
+
+    
+    for obj in selected_Objects:
+        obj.select_set(True) 
+        
+def rotate90DegR(self, context):
+    
+    selected_Objects=bpy.context.selected_objects     
+    setSelectionforAllObjects(selected_Objects, False)    
+
+    for obj in selected_Objects:
+        obj.select_set(True) 
+        
+        # Check if the object is a mesh
+        if obj and obj.type == 'MESH':
+
+            current_rotation = obj.rotation_euler
+            new_rotation_z = current_rotation.z + math.radians(-90)
+            obj.rotation_euler = (current_rotation.x, current_rotation.y, new_rotation_z)
+                    
+            mesh = obj.data           
+            obj.select_set(False) 
+    bpy.context.view_layer.update()   
+
+    
+    for obj in selected_Objects:
+        obj.select_set(True) 
+        
+        
+def clipRotation(self, context):  
+    selected_Objects=bpy.context.selected_objects
+       
+    for obj in selected_Objects:
+        obj.select_set(False)
+    bpy.context.view_layer.update()   
+
+    for obj in selected_Objects:
+        obj.select_set(True) 
+        
+    # Check if the object is a mesh
+        if obj and obj.type == 'MESH':
+              
+            
+            # Get the current rotation in radians
+            current_rotation = obj.rotation_euler
+
+            # Convert rotation to degrees
+            current_rotation_degrees = [math.degrees(r) for r in current_rotation]
+
+            # Calculate the next rotation in degrees
+            next_rotation_degrees_positive = [round(angle / 15) * 15 for angle in current_rotation_degrees]
+            next_rotation_degrees_negative = [(round(angle / 15) - 1) * 15 for angle in current_rotation_degrees]
+
+            # Convert degrees back to radians
+            next_rotation_radians_positive = [math.radians(angle) for angle in next_rotation_degrees_positive]
+            next_rotation_radians_negative = [math.radians(angle) for angle in next_rotation_degrees_negative]
+
+            # Calculate the difference between positive and negative rotations
+            diff_positive = sum(abs(angle - current_angle) for angle, current_angle in zip(next_rotation_degrees_positive, current_rotation_degrees))
+            diff_negative = sum(abs(angle - current_angle) for angle, current_angle in zip(next_rotation_degrees_negative, current_rotation_degrees))
+
+            # Set the rotation based on the shortest path
+            if diff_positive < diff_negative:
+                obj.rotation_euler = next_rotation_radians_positive
+            else:
+                obj.rotation_euler = next_rotation_radians_negative       
+            
+            mesh = obj.data           
+            obj.select_set(False) 
+    bpy.context.view_layer.update()   
+
+    
+    for obj in selected_Objects:
+        obj.select_set(True) 
+
+####################################################################################################
+#70_module_bl_vertexgroups.py
+####################################################################################################
+
+                
+def create_vertex_group(obj, group_name):
+    """Create a vertex group with the given name on the object"""
+    if group_name not in obj.vertex_groups:
+        obj.vertex_groups.new(name=group_name)
+
+#Simply Removes all Vertexgroups from an Object
+def remove_vertex_groups(obj):
+    """Remove all vertex groups from the given object by ID"""
+    for vertex_group in obj.vertex_groups:
+        obj.vertex_groups.remove(vertex_group)
+
+#Removes a Specific Vertexgroup
+def remove_vertex_groups_by_name(obj, group_name):
+    """Remove vertex groups from the given object by name"""
+    for vertex_group in obj.vertex_groups:
+        if vertex_group.name == group_name:
+            obj.vertex_groups.remove(vertex_group)
+            
+def add_vertex_group_to_object(obj, group_name):
+    """Add a vertex group to the object if it doesn't already exist"""
+    if group_name not in obj.vertex_groups:
+        obj.vertex_groups.new(name=group_name)
+        for vertex in obj.data.vertices:
+            group_index = obj.vertex_groups[group_name].index
+            vertex_group = vertex.groups.get(group_index)
+            if not vertex_group:
+                vertex.groups.new(group_index)
+                
+#Vertex Group:
+def createVertexgroupIfNotExists(obj, group_name):
+    if group_name not in obj.vertex_groups:
+        create_vertex_group(obj, group_name)
+    
+def createIncrementedVertexgroupIfNotExists(obj, group_name):
+    if group_name not in obj.vertex_groups:
+        create_vertex_group(obj, group_name)
+        return group_name, obj.vertex_groups[group_name]
+    else:
+        create_vertex_group(obj, group_name + "_sub")
+        return group_name + "_sub", obj.vertex_groups[group_name + "_sub"]
+    
+    
+def applyVertexgroupToMesh(obj, group_name, vertex_indices):
+    for vertex_index in vertex_indices:
+        obj.vertex_groups[group_name].add([vertex_index], 1.0, 'REPLACE')
+        
+
+def clean_other_groups(obj, groupname, changed_vertices):
+    for vertex_group in obj.vertex_groups:
+        if vertex_group.name != groupname:
+            for vertex_id in changed_vertices["vertex_indices"]:
+                obj.vertex_groups[vertex_group.name].remove([vertex_id])
+
+
+
+#Used by UVC_Operator_selectByGroup from
+def selectByGroup(self, ctx):
+    
+    activeobj = ctx.active_object
+    me = activeobj.data
+    bm = bmesh.from_edit_mesh(me)
+
+    # Iterate through faces to find selected ones
+    active_face_index = None
+    
+    for face in bm.faces:
+        for element in reversed(bm.select_history):
+            if isinstance(element, bmesh.types.BMFace):
+                face = element
+                break
+
+        if face is None: 
+            return (None)
+        if face.select and active_face_index is None:
+            active_face_index = face.index
+
+    obj = bpy.context.object
+    if obj.mode != 'EDIT':
+        bpy.ops.object.mode_set(mode='EDIT')
+
+    selected_groups = get_common_vertex_groups_from_selected()
+
+    # Ensure we're in edit mode before deselecting all
+    if bpy.context.object.mode != 'EDIT':
+        bpy.ops.object.mode_set(mode='EDIT')
+
+    # bpy.ops.mesh.select_all(action='DESELECT')
+    for group in selected_groups:
+        select_vertices_in_group(group)
+        
+    if active_face_index is not None:
+        # Update the BMesh data
+        bm = bmesh.from_edit_mesh(me)
+        # Update the internal index table
+        bm.faces.ensure_lookup_table()   
+        # Select the active face
+        bm.select_history.add( bm.faces[active_face_index])
+            
+            
+
+def select_vertices_in_group(group):
+    obj = bpy.context.object
+
+    # Ensure we're in object mode
+    bpy.ops.object.mode_set(mode='OBJECT')
+
+    # Deselect all vertices
+    for v in obj.data.vertices:
+        v.select = False
+
+    # Save vertices in the specified group
+    group_verts = [v for v in obj.data.vertices for g in v.groups if obj.vertex_groups[g.group] == group]
+
+    # Switch back to edit mode to see the selection
+    bpy.ops.object.mode_set(mode='EDIT')
+
+    # Get a BMesh from the object's mesh data
+    bm = bmesh.from_edit_mesh(obj.data)
+
+    # Deselect all vertices in bmesh
+    for v in bm.verts:
+        v.select = False
+
+    # Ensure the internal index table is up to date
+    bm.verts.ensure_lookup_table()
+
+    # Select vertices in the specified group
+    for v in group_verts:
+        bm.verts[v.index].select = True
+
+    # Update the mesh to reflect the selection changes
+    bmesh.update_edit_mesh(obj.data)
+    # Switch to vertex select mode
+    bpy.ops.mesh.select_mode(type='VERT')
+    bpy.ops.mesh.select_mode(type='FACE')
+
+
+
+def get_vertex_groups_from_selected():
+    obj = bpy.context.object
+    selected_vertex_groups = []
+
+    if obj.type == 'MESH':
+        # Ensure we're in object mode
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        # Iterate over all vertices in the mesh
+        for v in obj.data.vertices:
+            # If the vertex is selected
+            if v.select:
+                # Iterate over the vertex groups this vertex belongs to
+                for g in v.groups:
+                    group = obj.vertex_groups[g.group]
+                    if group not in selected_vertex_groups:
+                        selected_vertex_groups.append(group)
+
+    return selected_vertex_groups
+
+def get_common_vertex_groups_from_selected():
+    obj = bpy.context.object
+    common_vertex_groups = None
+
+    if obj.type == 'MESH':
+        # Ensure we're in object mode
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        # Iterate over all vertices in the mesh
+        for v in obj.data.vertices:
+            # If the vertex is selected
+            if v.select:
+                # Get the vertex groups this vertex belongs to
+                vertex_groups = [obj.vertex_groups[g.group] for g in v.groups]
+
+                if common_vertex_groups is None:
+                    # If this is the first selected vertex, all its groups are potential common groups
+                    common_vertex_groups = set(vertex_groups)
+                else:
+                    # Otherwise, only keep the groups that are also in the new list
+                    common_vertex_groups.intersection_update(vertex_groups)
+
+    return list(common_vertex_groups) if common_vertex_groups else []
+
+####################################################################################################
+#71_module_bl_vertexmanipulation.py
+####################################################################################################
+
+
+def getAllVertexIndices(obj):
+    return [vertex.index for vertex in obj.data.vertices]    
+
+def getPositionFromIndices(obj, vertex_indices):
+    return [obj.data.vertices[index].co for index in vertex_indices]
+
+def set_vertex_positions(obj, vertex_indices, positions):
+    for index, vertex_index in enumerate(vertex_indices):
+        obj.data.vertices[vertex_index].co = positions[index]
+        
+def set_vertex_positions_bmesh(obj, vertex_indices, positions):
+    # Ensure we're in object mode
+    bpy.ops.object.mode_set(mode='OBJECT')
+
+    # Create a bmesh from the object mesh data
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+
+    # Ensure the vertex index table is up-to-date
+    bm.verts.ensure_lookup_table()
+
+    # Set the vertex positions
+    for index, vertex_index in enumerate(vertex_indices):
+        bm.verts[vertex_index].co = positions[index]
+
+    # Update the object mesh data from the bmesh
+    bm.to_mesh(obj.data)
+    bm.free()
+
+    # Update the object
+    obj.data.update()
+ 
+def set_vertex_positions_4dsafe(obj, vertex_indices, positions):
+    # Iterate over the vertex indices
+    for index, vertex_index in enumerate(vertex_indices):
+        # Get the position
+        position = positions[index]
+        
+        # Check if the position has 4 items
+        if len(position) == 4:
+            # Remove the last item
+            position = position[:3]
+        
+        # Set the vertex position
+        obj.data.vertices[vertex_index].co = position 
+
+####################################################################################################
+#80_module_bl_animation.py
+####################################################################################################
+
+
+def createAnimation(obj, bone, transformation_matrix, last_frame):
+    """Create 2 keyframes for the bone based on a transformation matrix"""
+    current_frame = bpy.context.scene.frame_current
+    
+    # Get the object that the armature data belongs to
+    armature_object = bpy.data.objects[bone.id_data.name]
+
+    # Switch to pose mode to be able to animate bones
+    bpy.ops.object.mode_set(mode='POSE')
+
+    # Get the pose bone corresponding to the bone
+    pose_bone = armature_object.pose.bones.get(bone.name)
+
+    
+
+    # Convert the numpy array to a Matrix
+    #transformation_matrix = mathutils.Matrix(transformation_matrix.tolist())
+    transformation_matrix_bone=apply_transformation_to_bone (obj, bone, transformation_matrix)
+
+    # Decompose the transformation matrix
+    loc, rot, sca = transformation_matrix_bone.decompose()
+
+    # startframe=current_frame
+
+    if(last_frame ==-1):
+        startframe=current_frame
+    else:
+        startframe=last_frame
+
+    # Set the pose bone's location, rotation, and scale and insert a keyframe
+    pose_bone.keyframe_insert(data_path='location', frame=startframe+1)
+    pose_bone.keyframe_insert(data_path='rotation_quaternion', frame=startframe+1)
+    pose_bone.keyframe_insert(data_path='scale', frame=startframe+1)
+
+    # Create the second keyframe 15 frames later
+    bpy.context.scene.frame_set(current_frame + 15)
+    pose_bone.location +=loc
+    pose_bone.rotation_quaternion = pose_bone.rotation_quaternion @ rot
+    #pose_bone.rotation_quaternion = rot
+    pose_bone.scale *= sca
+    
+    
+    pose_bone.keyframe_insert(data_path='location', frame=current_frame+ 15)
+    pose_bone.keyframe_insert(data_path='rotation_quaternion', frame=current_frame+ 15)
+    pose_bone.keyframe_insert(data_path='scale', frame=current_frame+ 15)
+
+    # Switch back to object mode
+    bpy.ops.object.mode_set(mode='OBJECT')
+
+
+####################################################################################################
+#81_module_bl_armatures.py
+####################################################################################################
+
+
+  
+#Getters  
+        
+def checkIfBoneExists(armature, bone_name):
+    if armature.type != 'ARMATURE':
+        return None
+    # Check if the bone already exists in the armature
+    return bone_name in armature.data.edit_bones
+
+def getBoneifExists(armature, bone_name):
+    # Check if armature is an Armature object
+    if armature.type != 'ARMATURE':
+        return None
+
+    # Set the armature as the active object and switch to edit mode
+    bpy.context.view_layer.objects.active = armature
+    bpy.ops.object.mode_set(mode='EDIT')
+
+    # Check if the bone already exists
+    if not checkIfBoneExists(armature, bone_name):
+       return None
+
+    # Switch back to object mode
+    bpy.ops.object.mode_set(mode='OBJECT')
+
+    return armature.data.bones[bone_name]
+
+#Cleanup
+
+def removeArmatureAndVertexgroups(obj, armature):
+    # Check if the armature is the parent of the object
+    if obj.parent == armature:
+        # Remove the parent-child relationship
+        obj.parent = None
+        obj.matrix_parent_inverse = armature.matrix_world.inverted()
+    
+    # Remove all vertex groups associated with the object
+    remove_vertex_groups(obj)
+    
+    # Remove the armature object
+    bpy.data.objects.remove(armature, do_unlink=True)
+
+def removeArmatureifExists(context, mesh):
+    # Check if an armature with the same name already exists
+    armature_name = mesh.name + "_armature"
+    if armature_name in bpy.data.objects:
+        # Remove the armature object
+        bpy.data.objects.remove(bpy.data.objects[armature_name], do_unlink=True)
+        print(f"Removed armature {armature_name}.")
+
+#Autocreate Bones/Armatures (Bonefunctions need to be merged)
+def apply_transformations(obj, armature, vertex_indices, positions):
+    # Create a copy of the positions list to store the transformed positions
+    transformed_positions = positions.copy()
+    
+    # Get the armature's pose bones
+    pose_bones = armature.pose.bones
+    
+    # Iterate over the vertex indices and positions
+    for i, vertex_index in enumerate(vertex_indices):
+        # Get the vertex position
+        vertex_position = positions[i]
+        
+        # Convert the vertex position to armature space
+        vertex_position_armature_space = convert_to_armature_space(armature, vertex_position, obj)
+        
+        # Apply the transformations for each bone affecting the vertex
+        for bone in pose_bones:
+            # Get the vertex group associated with the bone
+            vertex_group = obj.vertex_groups.get(bone.name)
+            
+            # Check if the vertex group exists and the vertex is in the vertex group
+            if vertex_group and vertex_index in [g.group for g in obj.data.vertices[vertex_index].groups if g.group == vertex_group.index]:
+                # Get the weight of the bone affecting the vertex
+                weight = next((g.weight for g in obj.data.vertices[vertex_index].groups if g.group == vertex_group.index), 0)
+                
+                # Apply the bone's transformation to the vertex position
+                transformed_position = vertex_position_armature_space @ bone.matrix @ bone.matrix_basis.inverted()
+                
+                # Apply the weight to the transformed position
+                transformed_position *= weight
+                
+                # Convert the transformed position back to object space
+                transformed_position_object_space = armature.matrix_world @ transformed_position
+                
+                # Update the transformed position in the list
+                transformed_positions[i] = transformed_position_object_space
+    
+    # Return the transformed positions
+    return transformed_positions
+
+
+#Creators
+
+def createArmatureifNotExists(context, mesh):
+    # Check if an armature with the same name already exists
+    bpy.ops.object.mode_set(mode='EDIT')
+    armature_name = mesh.name + "_armature"
+    if armature_name in bpy.data.objects:
+        print(f"Armature {armature_name} already exists.")
+        bpy.ops.object.mode_set(mode='OBJECT')
+        return bpy.data.objects[armature_name]
+
+    # Create a new armature data block
+    armature_data = bpy.data.armatures.new(name=armature_name)
+
+    # Create a new object associated with the armature data
+    armature_object = bpy.data.objects.new(armature_name, armature_data)
+
+    # Link the armature object to the current collection
+    context.collection.objects.link(armature_object)
+    
+    # Set the armature's location to the mesh's location
+    armature_object.location = mesh.location
+
+    # Set the armature as the parent of the mesh
+    mesh.parent = armature_object
+
+    # Add an Armature modifier to the mesh
+    armature_modifier = mesh.modifiers.new(name="Armature", type='ARMATURE')
+    armature_modifier.object = armature_object
+    armature_modifier.use_vertex_groups = True
+    armature_modifier.show_in_editmode = True
+    armature_modifier.show_on_cage = True
+    
+    print(f"Created new armature {armature_object.name} and attached it to mesh {mesh.name}.")
+    bpy.ops.object.mode_set(mode='OBJECT')
+    
+    return armature_object
+
+def createBoneifNotExists(armature, bone_name, position):
+    # Check if armature is an Armature object
+    if armature.type != 'ARMATURE':
+        return None
+
+    # Set the armature as the active object and switch to edit mode
+    bpy.context.view_layer.objects.active = armature
+    bpy.ops.object.mode_set(mode='EDIT')
+
+    # Check if the bone already exists
+    if not checkIfBoneExists(armature, bone_name):
+        # Create a new bone
+        new_bone = armature.data.edit_bones.new(bone_name)
+        # Set the bone's head and tail
+        new_bone.head = position
+        new_bone.tail = position + mathutils.Vector((0, 1, 0))  # Add some length to the bone in the y-direction
+
+    # Switch back to object mode
+    bpy.ops.object.mode_set(mode='OBJECT')
+
+    return armature.data.bones[bone_name]
+
+
+#Get Positions
+
+#Applies the Animation to the Mesh Coordinates to have a correct Position
+def getPositionByAnimation_Bonespace(new_positions, obj, armature, groupbone):
+    # Get the current frame
+    current_frame = bpy.context.scene.frame_current
+    
+    # Select the armature object
+    bpy.context.view_layer.objects.active = armature
+    
+    # Switch to pose mode to access bone transformations
+    bpy.ops.object.mode_set(mode='POSE')
+    
+    # Get the pose bone corresponding to the groupbone
+    pose_bone = armature.pose.bones.get(groupbone.name)
+    
+    # Create a list to store the transformed positions
+    transformed_positions = []
+    
+    # Get the inverse of the object's world transformation matrix
+    obj_matrix_world_inv = np.linalg.inv(obj.matrix_world)
+    
+    # Iterate over each new position
+    for position in new_positions:
+        # Convert the position to a 4-element vector
+        position_4d = Vector(np.append(position, 1))
+
+        # Transform the position to the bone space
+        position_bone_space = pose_bone.matrix @ position
+
+        # # Transform the position to the object space
+        # transformed_position = obj_matrix_world_inv @ position_bone_space
+
+        # # Convert the transformed position back to a 3D vector
+        # transformed_position = transformed_position[:3]
+                
+        transformed_positions.append(position_bone_space)         
+                
+    
+    # Switch back to object mode
+    bpy.ops.object.mode_set(mode='OBJECT')
+    
+    return transformed_positions
+
+#get Matrix of Animation
+def getMatrixOfAnimation_PoseBonespace(obj, armature, groupbone):
+    # Get the current frame
+    current_frame = bpy.context.scene.frame_current
+    
+    armaturePosMode(armature, obj)
+    
+    # Select the armature object
+    bpy.context.view_layer.objects.active = armature
+    
+    # Switch to pose mode to access bone transformations
+    bpy.ops.object.mode_set(mode='POSE')
+    
+    # Get the pose bone corresponding to the groupbone
+    pose_bone = armature.pose.bones.get(groupbone.name)
+    
+    # Switch back to object mode
+    bpy.ops.object.mode_set(mode='OBJECT')
+    
+    objectEditMode(obj)
+    
+    return pose_bone.matrix
+
+def revertPositionByAnimation(positions, obj, armature, groupbone):
+    # Get the armature object
+    
+    armature_object = bpy.data.objects[obj.name + "_armature"]
+
+    # Switch to pose mode
+    bpy.ops.object.mode_set(mode='POSE')
+
+    # Iterate over the bones to find the right one
+    pose_bone = None
+    for bone in armature_object.pose.bones:
+        if bone.name == groupbone.name:
+            pose_bone = bone
+            break
+
+    # Check if pose_bone is None
+    if pose_bone is None:
+        raise ValueError(f"No bone found with name {groupbone.name}")
+
+    # Apply the inverted transformation matrix to remove the animation
+    print("internal calculation for corrected non animated position calculation")
+    transformed_positions = []
+    for position in positions:
+        position_vector = Vector(position)  # Convert numpy.ndarray to Vector
+        transformed_position = pose_bone.matrix.inverted() @ position_vector
+        transformed_positions.append(transformed_position)
+
+    return transformed_positions
+
+def convert_to_armature_space(armature, position, obj):
+    """Convert a position from object space to armature space."""
+    
+    # Convert the numpy array to a Vector
+    position = Vector(np.array(position).tolist())
+    
+    # Convert from object space to world space
+    position_world = obj.matrix_world @ position
+
+    # Convert from world space to armature space
+    position_armature = armature.matrix_world.inverted() @ position_world
+
+    return position_armature
+
+#Not used
+def getPositionByAnimation(new_positions, obj, armature, groupbone):
+    # Get the current frame
+    current_frame = bpy.context.scene.frame_current
+    
+    # Switch to pose mode to access bone transformations
+    bpy.ops.object.mode_set(mode='POSE')
+    
+    # Get the pose bone corresponding to the groupbone
+    pose_bone = armature.pose.bones.get(groupbone)
+    
+    # Create a list to store the transformed positions
+    transformed_positions = []
+    
+    # Get the inverse of the object's world transformation matrix
+    obj_matrix_world_inv = np.linalg.inv(obj.matrix_world)
+    
+    # Iterate over each new position
+    for position in new_positions:
+        # Set the pose bone's location to the position
+        pose_bone.location = position
+        
+        # Update the pose bone's transformation
+        bpy.context.view_layer.update()
+        
+        # Get the transformed position in world space
+        transformed_position_world = obj.matrix_world @ pose_bone.matrix @ Vector((0, 0, 0))
+        
+        # Convert the transformed position to the object's local space
+        transformed_position_local = obj_matrix_world_inv @ transformed_position_world
+        
+        # Append the transformed position to the list
+        transformed_positions.append(transformed_position_local)
+    
+    # Switch back to object mode
+    bpy.ops.object.mode_set(mode='OBJECT')
+    
+    return transformed_positions
+
+def apply_transformation_to_bone(obj, bone, transformation_matrix):
+    # Convert transformation matrix from object space to bone space
+    
+    transformation_matrix = mathutils.Matrix(transformation_matrix.tolist())
+    
+    
+        
+    if bone.parent:
+        transformation_matrix_bone = bone.parent.matrix.inverted() @ transformation_matrix
+    else:
+        transformation_matrix_bone = obj.matrix_world.inverted() @ transformation_matrix
+       
+
+    # Decompose the transformation matrix into its components
+    location, rotation, scale = transformation_matrix_bone.decompose()
+
+    # Invert the rotation
+    rotation.invert()
+
+    # Recompose the transformation matrix
+    transformation_matrix_bone = mathutils.Matrix.Translation(location) @ rotation.to_matrix().to_4x4() @ mathutils.Matrix.Scale(scale[0], 4, (1, 0, 0)) @ mathutils.Matrix.Scale(scale[1], 4, (0, 1, 0)) @ mathutils.Matrix.Scale(scale[2], 4, (0, 0, 1))
+    
+    return transformation_matrix_bone 
+
+
+
+
+####################################################################################################
+#90_module_pg_keydata_management.py
+####################################################################################################
+
+#check if keydata to object exists and if return the index in the list
+def get_keydata_index_by_object_name(context, object_name):
+    """Get the index of the keydata with the given object name"""
+    tool_data = context.scene.bonery_tools_data
+    for index, key_data in enumerate(tool_data.key_data):
+        if key_data.object_name == object_name:
+            return index
+    return -1
+
+def remove_keydata(keydata, context):
+    """Remove the given keydata from the list"""
+    tool_data = context.scene.bonery_tools_data
+    index = -1
+    for i, kd in enumerate(tool_data.key_data):
+        if kd == keydata:
+            index = i
+            break
+    if index >= 0:
+        tool_data.key_data.remove(index)
+        # Set the selection index to the previous keydata if available
+        if tool_data.active_keydata >= len(tool_data.key_data):
+            tool_data.active_keydata = len(tool_data.key_data) - 1
+            
+
+def create_for_vertexgroupdata(keydata, group_name):
+    """Create a new vertexgroupdata for the given object"""
+    # Check if the vertexgroupdata already exists
+    for vertex_group_data in keydata.vertex_group_data:
+        if vertex_group_data.vertex_group_name == group_name:
+            return vertex_group_data
+    
+    # If the vertexgroupdata doesn't exist, create a new one
+    vertex_group_data = keydata.vertex_group_data.add()
+    vertex_group_data.vertex_group_name = group_name
+    vertex_group_data.last_frame = bpy.context.scene.frame_current  # Set the last frame to the current frame of the timeline
+    return vertex_group_data
+
+def create_vertexpositiondata(vertex_group_data, vertex_id, vertex_position):
+    """Create a new vertexpositiondata for the given object"""
+    vertex_position_data = vertex_group_data.vertex_position_data.add()
+    vertex_position_data.vertex_id = vertex_id
+    vertex_position_data.vertex_position = vertex_position
+    return vertex_position_data
+
+#Getters
+
+def get_vertexgroupdata_by_name(keydata, group_name):
+    """Get the vertexgroupdata with the given name"""
+    for vertex_group_data in keydata.vertex_group_data:
+        if vertex_group_data.vertex_group_name == group_name:
+            return vertex_group_data
+    return None
+
+def get_vertexpositiondata_by_id(vertex_group_data, vertex_id):
+    """Get the vertexpositiondata with the given ID"""
+    for vertex_position_data in vertex_group_data.vertex_position_data:
+        if vertex_position_data.vertex_id == vertex_id:
+            return vertex_position_data
+    return None
+
+####################################################################################################
+#99_modlule_kd_important_getters.py
+####################################################################################################
+
+
+#MODULE_INSTALLER_SPACE_END_00000001
 
 #region <Utility> <Methods>
 def register():
@@ -2020,3 +3836,17 @@ def register():
     bpy.utils.register_tool(AutoGroupSelector, after={"builtin.select_box"})
     bpy.utils.register_tool(AutoGroupSelectorObject, after={"builtin.select_box"})
 
+
+# Ignore section
+
+
+# def import_functions_from_file(file_name):
+#     print("running import_functions_from_file")
+#     current_directory = os.path.dirname(__file__)
+#     file_path = os.path.join(current_directory, file_name)
+    
+#     # Load the spec and module from the file path
+#     spec = importlib.util.spec_from_file_location("module.name", file_path)
+#     module = importlib.util.module_from_spec(spec)
+#     spec.loader.exec_module(module)
+    
