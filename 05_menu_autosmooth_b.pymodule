@@ -1,0 +1,26 @@
+class UVC_Operator_splitnormals(bpy.types.Operator):    
+    """ OPERATOR Adds a Panel"""
+
+
+    bl_idname = "wm.uvc_splitnormals"
+    bl_label = "Splits the Normals of all selected Objects"
+    #create integer
+    angle : bpy.props.IntProperty(name="Angle", default=30, min=-360, max=360)
+
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Smoothing")
+        splitNormals(self=self, context=ctx)
+        return {'FINISHED'}
+    
+class UVC_Operator_cleanupsharps(bpy.types.Operator):    
+    """ OPERATOR Adds a Panel"""
+
+
+    bl_idname = "wm.uvc_cleanupsharps"
+    bl_label = "Cleans, Sharps, Splits and Shading"
+
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Cleanup Sharps")
+        cleanupSharpsAndSplits(self=self, context=ctx)
+        return {'FINISHED'}
+    

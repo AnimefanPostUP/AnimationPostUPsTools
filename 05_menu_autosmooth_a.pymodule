@@ -1,0 +1,102 @@
+#Autosmooth        
+class UVC_PT_extratools_3(uvc_extratoolpanel, bpy.types.Panel):
+    bl_label = "Autosmooth"
+    bl_parent_id = "anifanpostuptools_PT_extratools"
+    
+    
+    def draw(self, context):
+        layout = self.layout
+        box = layout.box() #NEW BOX
+        row=box.row()
+        
+        settingsdata = bpy.context.scene.ttb_settings_data
+        
+        row.prop(settingsdata, "autosmooth", expand=True, text="Autosmooth")  
+        row.prop(settingsdata, "cleanSplitNormals", expand=True, text="Set Clear")
+
+        row.prop(settingsdata, "extendsplitnormalmenu", expand=True, text="Expand")
+        
+        
+        box.label(text="Split Normals by Degree:")   
+
+        #===
+        row=box.row()   
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="5").angle=5
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="8").angle=7
+
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="10").angle=10
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="13").angle=13
+        
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="15").angle=15
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="15").angle=18
+       
+        #===
+        row=box.row() 
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="20").angle=20
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="23").angle=23
+
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="25").angle=25
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="28").angle=28
+
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="30").angle=30
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="33").angle=33
+        
+        #===
+        row=box.row()  
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="35").angle=35
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="38").angle=38
+
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="40").angle=40
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="43").angle=43
+
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="45").angle=45
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="48").angle=48
+
+        #===
+        row=box.row()  
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="50").angle=50
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="53").angle=53
+
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="55").angle=55
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="58").angle=58
+
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="60").angle=60
+
+
+
+
+        if(settingsdata.extendsplitnormalmenu):
+            #===
+            row=box.row()  
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="65").angle=65
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="70").angle=70
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="75").angle=75
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="80").angle=80
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="85").angle=85
+
+            row=box.row()  
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="90").angle=90
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="95").angle=95
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="100").angle=100
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="105").angle=105
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="110").angle=110
+
+        
+        row = box.row()
+        row.label(text="Clean Sharps/Splits/Shade:")  
+        op=row.operator(UVC_Operator_cleanupsharps.bl_idname, text="Clean")
+
+        row = box.row()
+        row.label(text="Active(!) Smoothing Angle:")  
+        row.prop(settingsdata, "splitangle", text="" , slider=True)

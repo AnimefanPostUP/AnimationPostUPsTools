@@ -16,6 +16,1266 @@ import re
 import glob
 
 
+####################################################################################################
+#02_menu_pivotsetter_a.pymodule
+####################################################################################################
+
+
+#Generic Tools:
+class uvc_extratoolpanel():
+    """ %PANEL%
+    Drawing the Colors and eventually Displayoption Buttons in Future
+    """
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "AnimfanPostUP"
+    bl_options = {"DEFAULT_CLOSED"}
+ 
+#Core Menu    
+class extratool_PT_panel(uvc_extratoolpanel, bpy.types.Panel):
+    """ %PANEL%
+    Drawing the Colors and eventually Displayoption Buttons in Future
+    """
+    bl_idname = "anifanpostuptools_PT_extratools"
+    bl_label = "Extra Tools"
+     
+    def draw(self, ctx):
+        layout = self.layout
+
+#Pivotsetter
+class UVC_PT_extratools_1(uvc_extratoolpanel, bpy.types.Panel):
+    bl_label = "Pivot Setter"
+    bl_parent_id = "anifanpostuptools_PT_extratools"
+    
+    
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        
+        settingsdata=bpy.context.scene.ttb_settings_data
+
+        box = layout.box() #NEW BOX
+        box.label(text="Set Pivot")     
+        row=box.row()   
+        box.label(text="Top/Bottom are Z Axies")  
+        row=box.row()   
+        box.label(text="in Z/Z- mode its the Y Axies")  
+        
+        row.prop(settingsdata, "direction", expand=True) 
+        row=box.row()    
+        row.prop(settingsdata, "transformspace", expand=True) 
+        row=box.row()    
+        
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="RADIOBUT_ON")
+        op.height="tl"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="TRIA_UP")
+        op.height="tm"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="RADIOBUT_ON")
+        op.height="tr"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        row=box.row()    
+        
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="TRIA_LEFT")
+        op.height="ml"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="RADIOBUT_ON")
+        op.height="mm"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="TRIA_RIGHT")
+        op.height="mr"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        row=box.row()    
+        
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="RADIOBUT_ON")
+        op.height="bl"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="TRIA_DOWN")
+        op.height="bm"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="RADIOBUT_ON")
+        op.height="br"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        row=box.row()    
+        
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="Average")
+        op.height="ct"
+        op.direction=settingsdata.direction
+        op.direction=settingsdata.direction
+        row=box.row()    
+  
+
+
+
+        
+        
+    
+
+class UVC_PT_extratools_4(uvc_extratoolpanel, bpy.types.Panel):
+    bl_label = "Vertex Groups"
+    bl_parent_id = "anifanpostuptools_PT_extratools"
+    
+    
+    def draw(self, context):
+        layout = self.layout
+        box = layout.box() #NEW BOX
+        row=box.row()
+        
+        settingsdata = bpy.context.scene.ttb_settings_data
+        
+        box.label(text="Select shared Vertexgroup:")   
+        row=box.row()   
+        op=row.operator(UVC_Operator_selectByGroup.bl_idname, text="Select SimilarGroup")
+
+
+
+       
+
+                        
+                
+                        
+                        
+
+# operator UVC_Operator_selectByGroup
+class UVC_Operator_selectByGroup(bpy.types.Operator):
+    """ OPERATOR
+    Adds a Panel
+    """
+    bl_idname = "anifanpostuptools.selectbygroup"
+    bl_label = "Select Similar Group"
+    
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Selecting by Group")
+        selectByGroup(self, ctx)
+        return {'FINISHED'}
+    
+class UVC_Operator_selectByGroupTool(bpy.types.Operator):
+    """ OPERATOR
+    Adds a Panel
+    """
+    bl_idname = "anifanpostuptools.selectbygrouptool"
+    bl_label = "Select Similar Group"
+    
+    def invoke(self, context, event):
+        bpy.ops.ed.undo_push(message="Select By Group")
+        # Perform the default selection operation
+        bpy.ops.view3d.select(location=(event.mouse_region_x, event.mouse_region_y))
+
+        # Then execute your custom operation
+        selectByGroup(self, context)
+
+        return {'FINISHED'}
+    
+class UVC_Operator_rename(bpy.types.Operator):
+    """ OPERATOR
+    Adds a Panel
+    """
+    bl_idname = "anifanpostuptools.rename"
+    bl_label = "Rename"
+
+    PreFix: bpy.props.StringProperty(name="Prefix", default="")
+    Suffix: bpy.props.StringProperty(name="Suffix", default="") 
+    Suffix_Sub: bpy.props.StringProperty(name="Suffix Sub", default="")
+    
+    def execute(self, context):
+        bpy.ops.ed.undo_push(message="Rename")
+        rename (self=self, context=context)
+        return {'FINISHED'}
+    
+def rename(self, context):
+    # Get active Objects
+    selected_Objects = bpy.context.selected_objects
+
+    # Get Prefix and Suffix from Operator
+    prefix = self.PreFix
+    suffix = self.Suffix
+    suffix_Sub = self.Suffix_Sub
+
+    prefixIsSet = False
+    suffixIsSet = False
+    suffix_SubIsSet = False
+
+    if not prefix == "":
+        prefixIsSet = True
+
+    if not suffix == "":
+        suffixIsSet = True
+
+    if not suffix_Sub == "":
+        suffix_SubIsSet = True
+
+    # Select the objects you want to rename
+    selected_objects = bpy.context.selected_objects
+    for obj in selected_objects:
+        new_name = prefix if prefixIsSet else ""
+        if suffixIsSet:
+            new_name += f"_{suffix}" if prefixIsSet else suffix
+        if suffix_SubIsSet:
+            new_name += f"_{suffix_Sub}" if new_name else suffix_Sub
+        obj.name = new_name
+        
+        
+
+class UVC_Operator_transformByGroupTool(bpy.types.Operator):
+    """ OPERATOR
+    Adds a Panel
+    """
+    bl_idname = "anifanpostuptools.transformbygrouptool"
+    bl_label = "Transform Similar Group"
+    
+    def invoke(self, context, event):
+        print("activated Transformtool")
+        # Get the active mesh
+        obj = context.active_object
+        me = obj.data
+        bm = bmesh.from_edit_mesh(me)
+        bpy.ops.ed.undo_push(message="Select By Group Transform")
+        # Initialize a list to store selected faces
+        selected_faces = []
+
+        # Iterate through faces to find selected ones
+        active_face = None
+        
+        for face in bm.faces:
+            for element in reversed(bm.select_history):
+                if isinstance(element, bmesh.types.BMFace):
+                    face = element
+                    break
+
+            if face is None: 
+                return (None)
+            if face.select and active_face is None:
+                active_face=face
+    
+    
+
+        if active_face is None: 
+            print("canceled")
+            return {'CANCELLED'}
+
+        
+
+        # Find the most facing axis of the active face
+        most_facing_axis = find_most_facing_axis(active_face.normal)
+        
+        print (most_facing_axis)
+
+        currentOrientationMode = bpy.context.scene.transform_orientation_slots[0].type
+        #Set mode to local
+        bpy.context.scene.transform_orientation_slots[0].type = 'LOCAL'
+        
+        # Set the constraint axis for the transform operator
+        constraint_axis = (abs(most_facing_axis.x) == 1.0, abs(most_facing_axis.y) == 1.0, abs(most_facing_axis.z) == 1.0)
+        
+        # Call the transform.translate operator with the constraint axis
+        bpy.ops.transform.translate('INVOKE_DEFAULT', constraint_axis=constraint_axis)
+        
+        #revert to old mode
+        bpy.context.scene.transform_orientation_slots[0].type = currentOrientationMode
+
+        return {'RUNNING_MODAL'}
+    
+class AutoGroupSelector(WorkSpaceTool):
+    bl_space_type = 'VIEW_3D'
+    bl_context_mode = 'EDIT_MESH'
+
+    bl_idname = "anifanpostuptools.auto_group_selector"
+    bl_label = "Auto Group Selector"
+    bl_description = (
+        "This is a tooltip\n"
+        "with multiple lines"
+    )
+    bl_icon = "ops.generic.select"
+    bl_widget = None
+    bl_operator = UVC_Operator_selectByGroupTool.bl_idname
+    
+    bl_keymap = (
+        ("anifanpostuptools.selectbygrouptool", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+        ("anifanpostuptools.selectbygrouptool", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
+        ("anifanpostuptools.transformbygrouptool", {"type":"G", "value": 'PRESS'}, None),
+    )
+
+    # def draw_settings(context, layout, tool):
+    #     #props = tool.operator_properties("view3d.select_lasso")
+    #     #layout.prop(props, "mode")
+    def draw_settings(context, layout, tool):
+        pass
+
+
+class AutoGroupSelectorObject(WorkSpaceTool):
+    bl_space_type = 'VIEW_3D'
+    bl_context_mode = 'OBJECT'
+
+    bl_idname = "anifanpostuptools.auto_group_selector_object"
+    bl_label = "Auto Group Selector"
+    bl_description = (
+        "This is a tooltip\n"
+        "with multiple lines"
+    )
+    bl_icon = "ops.generic.select"
+    bl_widget = None
+    bl_operator = "view3d.select"
+    
+    bl_keymap = (
+        ("view3d.select", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
+        ("view3d.select", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG'}, None),
+    )
+
+    def draw_settings(context, layout, tool):
+        pass
+    
+
+    
+
+
+
+
+####################################################################################################
+#02_menu_pivotsetter_op.pymodule
+####################################################################################################
+
+class UVC_Operator_setOrigin(bpy.types.Operator):
+
+    """ OPERATOR
+    Adds a Panel
+    """
+
+
+    bl_idname = "uvc.setorigin"
+    bl_label = "sets the Origin of all Selected Objects"
+    
+    
+    
+    height: bpy.props.EnumProperty(
+        items=[
+            ('tl', 'Top Left', 'ltl', '', 1),
+            ('tm', 'Top Mid', 'tm', '', 2),    
+            ('tr', 'Top Right', 'tr', '', 3),
+            ('ml', 'Mid Left', 'ml', '', 4),
+            ('mm', 'Mid ', '', 'mm', 5),    
+            ('mr', 'Mid Right', 'mr', '', 6),
+            ('bl', 'Bottom Left', 'bl', '', 7),
+            ('bm', 'Bottom Mid', 'bm', '', 8),    
+            ('br', 'Bottom Right', 'br', '', 9),
+            ('ct', 'Center', 'cr', '', 10),
+        ],
+        name="Pivot Placement",
+        description="If the Pivot should be placed on a Edge, Corner or Face",
+        default='mm'
+    )
+    
+
+    direction: bpy.props.EnumProperty(
+        items=[
+            ('x', 'X', 'X', '', 1),
+            ('xn', 'X-', 'X-', '', 2),    
+            ('y', 'Y', 'Y', '', 3),
+            ('yn', 'Y-', 'Y-', '', 4),    
+            ('z', 'Z', 'Z', '', 5),
+            ('zn', 'Z-', 'Z-', '', 6),    
+        ],
+        name="Which Direction",
+        description="Which Direction to set the Pivot",
+        default='zn'
+    )
+    
+    transformspace: bpy.props.EnumProperty(
+        items=[
+            ('objectspace', 'Object', 'Direction by Objectspace', '', 1),
+            ('worldspace', 'World', 'Direction by Worldspace', '', 2),    
+            ('auto', 'Auto', 'Will Clip the Objectrotation by the most fitting Worldspace direction', '', 3),
+        ],
+        name="Which Direction",
+        description="Which Direction to set the Pivot",
+        default='objectspace'
+    )
+    
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Setting Origin of Selection")
+        setPivot(self=self, context=ctx)
+        
+        return {'FINISHED'}
+
+####################################################################################################
+#03_menu_autosmooth_a.pymodule
+####################################################################################################
+
+
+
+####################################################################################################
+#03_menu_autosmooth_op.pymodule
+####################################################################################################
+
+
+
+####################################################################################################
+#04_menu_rotationtool_a.pymodule
+####################################################################################################
+
+#Rotationrool        
+class UVC_PT_extratools_2(uvc_extratoolpanel, bpy.types.Panel):
+    bl_label = "Rotationtool"
+    bl_parent_id = "anifanpostuptools_PT_extratools"
+    
+    
+    def draw(self, context):
+        layout = self.layout
+
+        box = layout.box() #NEW BOX
+        box.label(text="Rotationclip:")   
+        row=box.row()   
+        op=row.operator(UVC_Operator_clipRotation.bl_idname, text="Clip by 15°")
+        row=box.row()   
+        
+        layout.row().separator()
+        box.label(text="Quickrotate:")   
+        row=box.row()   
+        op=row.operator(UVC_Operator_rotate90DegL.bl_idname, text="Rotate L")
+        row=box.row()   
+        op=row.operator(UVC_Operator_rotate90DegR.bl_idname, text="Rotate R")
+        row=box.row()   
+        
+        #Create Operator to fix the rotation of the object by selected face normal
+        #create one operator that allows to fix x,y,z, or all axis
+        
+        #Operator
+        row=box.row()
+        row.label(text="Fix Rotation by Face Normal:")
+        row=box.row()
+        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="X Axis")
+        op.axis = 'X'
+        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="Y Axis")
+        op.axis = 'Y'
+        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="Z Axis")
+        op.axis = 'Z'
+        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="All Axis")
+        op.axis = 'A'
+
+####################################################################################################
+#04_menu_rotationtool_op.pymodule
+####################################################################################################
+
+#Operator
+class UVC_Operator_fixRotation(bpy.types.Operator):
+    """ OPERATOR
+    Adds a Panel
+    """
+    bl_idname = "anifanpostuptools.fixrotation"
+    bl_label = "Fix Rotation"
+    
+    #create enums
+    axis: bpy.props.EnumProperty(
+        items=[
+            ('X', "X Axis", ""),
+            ('Y', "Y Axis", ""),
+            ('Z', "Z Axis", ""),
+            ('A', "All Axis", ""),
+        ],
+        name="Axis",
+        description="Select the Axis to fix",
+        default='A'
+    )
+    
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Fixing Rotation")
+        fixRotation(self=self, ctx=ctx)
+        return {'FINISHED'}
+    
+def fixRotation(self, ctx):
+    #get selected object and make sure in edit mode
+    obj = bpy.context.active_object
+    bpy.ops.object.mode_set(mode='EDIT')
+    
+    #get the selected using bmesh
+    bm = bmesh.from_edit_mesh(obj.data)
+    selected = [f for f in bm.faces if f.select]
+    
+    #rotate the object by the selected face normal so the normal is in the direction of the axis of the world
+    for face in selected:
+        normal = face.normal
+        if self.axis == 'X':
+            target = Vector((1, 0, 0))
+        elif self.axis == 'Y':
+            target = Vector((0, 1, 0))
+        elif self.axis == 'Z':
+            target = Vector((0, 0, 1))
+        elif self.axis == 'A':
+            target = Vector((1, 1, 1))
+        
+        rotation = normal.rotation_difference(target)
+        
+        # Apply the rotation to the entire object
+        obj.rotation_euler = rotation.to_euler()
+    
+    # Switch back to object mode
+    bpy.ops.object.mode_set(mode='OBJECT')
+    
+    
+        
+class UVC_Operator_rotate90DegL(bpy.types.Operator):    
+    """ OPERATOR Adds a Panel"""
+
+
+    bl_idname = "wm.uvc_rotate90degl"
+    bl_label = "Rotates 90 degrees"
+    
+
+    
+    
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Rotating")
+        rotate90DegL(self=self, context=ctx)
+        
+        return {'FINISHED'}
+  
+class UVC_Operator_rotate90DegR(bpy.types.Operator):    
+    """ OPERATOR Adds a Panel"""
+
+
+    bl_idname = "wm.uvc_rotate90degr"
+    bl_label = "Rotates 90 degrees"
+    
+
+    
+    
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Rotating")
+        rotate90DegR(self=self, context=ctx)
+        return {'FINISHED'}
+
+class UVC_Operator_clipRotation(bpy.types.Operator):    
+    """ OPERATOR Adds a Panel"""
+
+
+    bl_idname = "wm.uvc_cliprotation"
+    bl_label = "Clips the Rotation to 15 Degrees into the shortest direction"
+    
+
+    
+    
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Clipping Rotation")
+        clipRotation(self=self, context=ctx)
+        
+        return {'FINISHED'}
+    
+    
+    
+
+class UVC_Operator_rerouteSnapping(bpy.types.Operator):    
+    """ OPERATOR Adds a Panel"""
+
+
+    bl_idname = "wm.uvc_splitnormals"
+    bl_label = "Splits the Normals of all selected Objects"
+    #create integer
+    angle : bpy.props.IntProperty(name="Angle", default=30, min=-360, max=360)
+
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Smoothing")
+        splitNormals(self=self, context=ctx)
+        return {'FINISHED'}
+
+####################################################################################################
+#05_menu_autosmooth_a.pymodule
+####################################################################################################
+
+#Autosmooth        
+class UVC_PT_extratools_3(uvc_extratoolpanel, bpy.types.Panel):
+    bl_label = "Autosmooth"
+    bl_parent_id = "anifanpostuptools_PT_extratools"
+    
+    
+    def draw(self, context):
+        layout = self.layout
+        box = layout.box() #NEW BOX
+        row=box.row()
+        
+        settingsdata = bpy.context.scene.ttb_settings_data
+        
+        row.prop(settingsdata, "autosmooth", expand=True, text="Autosmooth")  
+        row.prop(settingsdata, "cleanSplitNormals", expand=True, text="Set Clear")
+
+        row.prop(settingsdata, "extendsplitnormalmenu", expand=True, text="Expand")
+        
+        
+        box.label(text="Split Normals by Degree:")   
+
+        #===
+        row=box.row()   
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="5").angle=5
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="8").angle=7
+
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="10").angle=10
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="13").angle=13
+        
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="15").angle=15
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="15").angle=18
+       
+        #===
+        row=box.row() 
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="20").angle=20
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="23").angle=23
+
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="25").angle=25
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="28").angle=28
+
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="30").angle=30
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="33").angle=33
+        
+        #===
+        row=box.row()  
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="35").angle=35
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="38").angle=38
+
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="40").angle=40
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="43").angle=43
+
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="45").angle=45
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="48").angle=48
+
+        #===
+        row=box.row()  
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="50").angle=50
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="53").angle=53
+
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="55").angle=55
+        if(settingsdata.extendsplitnormalmenu):
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="58").angle=58
+
+        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="60").angle=60
+
+
+
+
+        if(settingsdata.extendsplitnormalmenu):
+            #===
+            row=box.row()  
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="65").angle=65
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="70").angle=70
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="75").angle=75
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="80").angle=80
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="85").angle=85
+
+            row=box.row()  
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="90").angle=90
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="95").angle=95
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="100").angle=100
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="105").angle=105
+            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="110").angle=110
+
+        
+        row = box.row()
+        row.label(text="Clean Sharps/Splits/Shade:")  
+        op=row.operator(UVC_Operator_cleanupsharps.bl_idname, text="Clean")
+
+        row = box.row()
+        row.label(text="Active(!) Smoothing Angle:")  
+        row.prop(settingsdata, "splitangle", text="" , slider=True)
+
+
+####################################################################################################
+#05_menu_autosmooth_b.pymodule
+####################################################################################################
+
+class UVC_Operator_splitnormals(bpy.types.Operator):    
+    """ OPERATOR Adds a Panel"""
+
+
+    bl_idname = "wm.uvc_splitnormals"
+    bl_label = "Splits the Normals of all selected Objects"
+    #create integer
+    angle : bpy.props.IntProperty(name="Angle", default=30, min=-360, max=360)
+
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Smoothing")
+        splitNormals(self=self, context=ctx)
+        return {'FINISHED'}
+    
+class UVC_Operator_cleanupsharps(bpy.types.Operator):    
+    """ OPERATOR Adds a Panel"""
+
+
+    bl_idname = "wm.uvc_cleanupsharps"
+    bl_label = "Cleans, Sharps, Splits and Shading"
+
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Cleanup Sharps")
+        cleanupSharpsAndSplits(self=self, context=ctx)
+        return {'FINISHED'}
+    
+
+
+####################################################################################################
+#06_menu_renamer_a.pymodule
+####################################################################################################
+
+class UVC_PT_extratools_5(uvc_extratoolpanel, bpy.types.Panel):
+    bl_label = "Renamer"
+    bl_parent_id = "anifanpostuptools_PT_extratools"
+    
+    
+    def draw(self, context):
+        layout = self.layout
+        box = layout.box() #NEW BOX
+        row=box.row()
+
+        Tooldata_Renamer= get_current_tooldata_renamer(context) #Get Tooldata
+
+
+
+        #Prop Prefix
+        row=box.row()
+        row.prop (Tooldata_Renamer, "Prefix", text="Prefix")
+        row=box.row()
+        row.label(text="_")
+        row=box.row()
+        row.prop (Tooldata_Renamer, "Suffix", text="Suffix")
+
+
+
+
+        box = layout.box() #NEW BOX
+        row=box.row()
+        row.label(text="Size:", icon="CON_SIZELIMIT")
+
+        row=box.row()
+        subsuffix="none"
+        op=row.operator(UVC_Operator_rename.bl_idname, text="None")
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=""
+
+        subsuffix="Small"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+        
+        subsuffix="Medium"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Large"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Color:", icon="COLOR")
+
+        row=box.row()
+        subsuffix="Gray"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="White"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Black"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        row=box.row()
+        subsuffix="Red"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Green"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Blue"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        
+        row=box.row()
+        subsuffix="Yellow"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Orange"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Orange"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Purple"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Class (Main):", icon="PMARKER_ACT")
+
+        row=box.row()
+        
+        subsuffix="Base"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Raw"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="Main"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Class (Sub):", icon="KEYFRAME_HLT")
+
+        row=box.row()
+
+        subsuffix="Extra"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Sub"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="Alt"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Direction (Sky):", icon="OBJECT_ORIGIN")
+
+        row=box.row()
+
+        subsuffix="North"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="South"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="East"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="West"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Direction (Relative):", icon="ORIENTATION_LOCAL")
+
+        row=box.row()
+
+        subsuffix="Top"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Bottom"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="Left"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Right"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix       
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Timestamp:", icon="TIME")
+
+        row=box.row()
+
+        subsuffix="Pre"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Current"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="After"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Later"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix  
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Marks:", icon="BOOKMARKS")
+
+        row=box.row()
+
+        subsuffix="New"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Temp"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="Placeholder"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Test"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix  
+
+    
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Part:", icon="TRACKER")
+
+        row=box.row()
+
+        subsuffix="Beginn"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Middle"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="End"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+            
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="State:", icon="PIVOT_BOUNDBOX")
+
+        row=box.row()
+
+        subsuffix="Open"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Closed"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="Exposed"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Quality:", icon="META_DATA")
+
+        row=box.row()
+
+        subsuffix="Broken"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Damaged"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="Intact"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+####################################################################################################
+#06_menu_renamer_op.pymodule
+####################################################################################################
+
+
+
+####################################################################################################
+#07_menu_uvopt_a.pymodule
+####################################################################################################
+
+
+#create another panel
+class UVC_PT_extratools_6(uvc_extratoolpanel, bpy.types.Panel):
+    bl_label = "UV Optimizer"
+    bl_parent_id = "anifanpostuptools_PT_extratools"
+    
+    
+    def draw(self, context):
+        layout = self.layout
+        box = layout.box() #NEW BOX
+        row=box.row()
+        
+        settingsdata = bpy.context.scene.ttb_settings_data
+        
+
+####################################################################################################
+#07_menu_uvopt_op.pymodule
+####################################################################################################
+
+#Operator createOptimizedUV
+class UVC_Operator_createOptimizedUV(bpy.types.Operator):
+    """ OPERATOR
+    Adds a Panel
+    """
+    bl_idname = "anifanpostuptools.createoptimizeduv"
+    bl_label = "Create Optimized UV"
+    
+    def execute(self, context):
+        bpy.ops.ed.undo_push(message="Create Optimized UV")
+        createOptimizedUV(self, context)
+        return {'FINISHED'}
+
+
+def createOptimizedUV(self, context):
+    # Get active Objects
+    selected_Objects = bpy.context.selected_objects
+
+    # Select the objects you want to rename
+    selected_objects = bpy.context.selected_objects
+    for obj in selected_objects:
+        #cache the old uv in a list of Islands
+        uvIslands = []
+        for uv in obj.data.uv_layers.active.data:
+            uvIslands.append(uv.uv)
+            
+        #add new uv called "Optimized" if not exists
+        if not "Optimized" in obj.data.uv_layers:
+            obj.data.uv_layers.new(name="Optimized")
+            
+        #set the new uv to active
+        obj.data.uv_layers.active = obj.data.uv_layers["Optimized"]
+        
+        #get all images that are used in the materials of the object
+        images = []
+        for slot in obj.material_slots:
+            if slot.material:
+                for node in slot.material.node_tree.nodes:
+                    if node.type == "TEX_IMAGE":
+                        images.append(node.image)
+                        
+        #Create dicts for images, uvIslands and pixels parented to each other
+        uvdict = {}
+       
+       
+        #convert pixels into 2 dimensional array make sure the array has the same pixel position as the uvs
+        pixels = []
+        # Get the size of one dimension (assuming the image is a square)
+        size = int(np.sqrt(len(image.pixels)))
+
+        # Convert pixels into 2 dimensional array
+        pixels = np.array(image.pixels).reshape(size, size)
+                    
+                        
+                        
+        # Iterate all islands
+        for i, uv in enumerate(uvIslands):
+            imageDict = {}
+            # Iterate all images
+            for image in images:
+                uvIslandDict = {}
+                #iterate faces of the island
+             
+                #iterate x and y of the pixels
+                for x in range(size):
+                    for y in range(size):
+                        pixelDict = {
+                            'top': 0,
+                            'bottom': 0,
+                            'left': 0,
+                            'right': 0,
+                            
+                            #average difference of the top, bottom, left and right pixel
+                            'average': 0,
+                            
+                            #3D vector
+                            'orientation': (0, 0),
+                            'straigthness': 0
+                            
+                        }
+                        pixel = pixels[x][y]
+                       
+                        #add the difference to the top , bottom , left and right pixel to a variable      
+                        top =  pixel - pixels[x][y+1] 
+                        bottom =  pixel - pixels[x][y-1]
+                        left =  pixel - pixels[x-1][y]
+                        right =  pixel - pixels[x+1][y]
+                                   
+                        difference = top + bottom + left + right
+                        difference = difference / 4
+                        
+                        #calculate a 2d vector into the direction with the highest difference uusing math
+                        orientation = (top - bottom, left - right)
+                        #normalize
+                        orientation = orientation / np.linalg.norm(orientation)
+                        
+                        straigthness = abs(pixel['orientation'][0] - 0.5) + abs(pixel['orientation'][1] - 0.5)
+                        
+                        #add the differences to the pixelDict
+                        pixelDict['top'] = top
+                        pixelDict['bottom'] = bottom
+                        pixelDict['left'] = left
+                        pixelDict['right'] = right
+                        
+                        #add the average difference to the pixelDict
+                        pixelDict['average'] = difference
+                        
+                        #add the orientation to the pixelDict
+                        pixelDict['orientation'] = orientation
+                        
+                        # Add the straigthness to the pixelDict
+                        pixelDict['straigthness'] = straigthness
+                                           
+                        pixelDict['p'+ str(x) +"/"+ str(y)] = pixelDict
+                        # Add the pixelDict to the uvIslandDict
+                        uvIslandDict['pixel'] = pixelDict
+                        
+                        
+                        
+                    #cacululate the average orientation of all pixels 
+                    averageOrientation = (0, 0)
+                    straigthness=0
+                    mindifference=0
+                    maxdifference=0
+                    
+                    for pixel in uvIslandDict['pixel']:
+                        averageOrientation += pixel['orientation']
+                        
+                        #calculate how much the vectors are straight to left or right or top or bottom
+                        #substract them to get how much the vectors are, the closer to 0.5 the less straight they are
+                        
+                        
+                        
+                        
+                    
+                    # Add the uvIslandDict to the imageDict
+                imageDict['uvIslandDict'] = uvIslandDict
+            # Add the imageDict to the uvdict using update
+            uvdict.update(imageDict)
+                   
+
+                    
+#MODULE_EARLY_INSTALLERSPACE_START_00000000
     
 
 
@@ -1939,231 +3199,9 @@ class Bonery_OT_keyloose(bpy.types.Operator):
 
     def execute(self, context):      
         key_object_loose(context)
-        return {'FINISHED'}
-    
-    
-    
-   
- #Data Classes  
-    
-class Bonery_OT_sideloaderrecall(bpy.types.Operator):
-    """Operator for Bonery addon"""
-    bl_idname =  "bonery.sideloader_recall"
-    bl_label = "Sideloader Recall"
-
-    def execute(self, context):      
-        sideloader()
-        return {'FINISHED'}    
-    
-class VertexPositionData(bpy.types.PropertyGroup):
-    """Data for storing vertex positions"""
-    vertex_position: bpy.props.FloatVectorProperty(name="Vertex Position")
-    vertex_id: bpy.props.IntProperty(name="Vertex ID")
-
-class VertexGroupData(bpy.types.PropertyGroup):
-    """Data for storing vertex group IDs"""
-    vertex_group_id: bpy.props.IntProperty(name="Vertex Group ID")
-    vertex_group_name: bpy.props.StringProperty(name="Vertex Group ID")
-    vertex_position_data: bpy.props.CollectionProperty(type=VertexPositionData, name="Vertex Position Data")
-    parentId : bpy.props.IntProperty(name="Parent ID", default=-1)
-    parentName : bpy.props.StringProperty(name="Parent Name", default="")
-    last_frame: bpy.props.IntProperty(name="Last Frame", default=-1)
-
-class Keydata(bpy.types.PropertyGroup):
-    """Data for storing key information"""
-    vertex_group_data: bpy.props.CollectionProperty(type=VertexGroupData, name="Vertex Group Data")
-    object_name: bpy.props.StringProperty(name="Object Name", default="")
-    object_id: bpy.props.StringProperty(name="Object ID", default="")
-    active_vertexgroupdata : bpy.props.IntProperty(name="Active Index", default=0)
-    
-    
-#Settings Data
-class Settingsdata(bpy.types.PropertyGroup):
-    """Settings for Bonery addon"""
-    my_property: bpy.props.StringProperty(name="My Property")
-    flicktimeline: bpy.props.BoolProperty(name="Flick Timeline",description="Enable or disable flicking the timeline",default=True)
-
-    debuggingsubmenu: bpy.props.EnumProperty(
-        items=[
-            ('none', 'None', 'Hide Menus'),
-            ('vertexprint', 'Vertex Print', 'Print Vertexpositions'),
-            ('a', 'A', 'xxx'),
-            ('b', 'B', 'xxx'),
-            ('c', 'C', 'xxx'),
-            ('d', 'D', 'xxx'),
-            ('e', 'E', 'xxx'),
-            ('f', 'F', 'xxx'),
-            
-        ],
-        name="debugmenu",
-        description="Which type of Debugging Menu to use",
-        default='none'
-    )
-
-    
-class Tooldata(bpy.types.PropertyGroup):
-    """Tool storage for Bonery module"""
-    my_tool: bpy.props.PointerProperty(type=bpy.types.Object, name="My Tool")
-    key_data: bpy.props.CollectionProperty(type=Keydata, name="Key Data")
-    active_keydata : bpy.props.IntProperty(name="Active Index", default=0)
-
-
-class Tooldata_Renamer(bpy.types.PropertyGroup):
-    """Tool storage for Renamer module"""
-    Prefix : bpy.props.StringProperty(name="Prefix", default="")
-    Suffix : bpy.props.StringProperty(name="Suffix", default="")
-
-
-#Function Importer
-
 
 ####################################################################################################
-#functionimporttest.py
-####################################################################################################
-
-def sideloadtester():
-    print("SIDELOAD Importer Module Operational!")
-    return
-
-####################################################################################################
-#01_module_ma_matrices.py
-####################################################################################################
-
-
-
-#Combiner for the Transformation Matrix
-def combine_into_transformation_matrix(translation, scale, rotation):
-    """Combine translation, scale, and rotation into a transformation matrix"""
-    # Create 4x4 transformation matrix
-    transformation_matrix = np.eye(4)
-
-    # Set translation
-    transformation_matrix[:3, 3] = translation
-
-    # Set scale
-    transformation_matrix[:3, :3] *= scale
-
-    # Set rotation
-    transformation_matrix[:3, :3] = np.dot(transformation_matrix[:3, :3], rotation)
-
-    return transformation_matrix
-
-    
-#Calculation of the Center of the Vertex Positions
-def get_vertex_Center(vertex_positions):
-    """Get the center of the given vertex positions"""
-    center = mathutils.Vector((0, 0, 0))
-    for vertex_position in vertex_positions:
-        center += vertex_position
-    center /= len(vertex_positions)
-    return center
-
-#Detects Changes in Vertex Positions to detect changes in scale
-def calculate_average_distance(vertex_positions, center):
-    """Calculate the average distance of vertices from the center"""
-    distances = [np.linalg.norm(vertex_position - center) for vertex_position in vertex_positions]
-    return sum(distances) / len(distances)
-
-#Calculation of Rotation Changes
-def calculate_rotation_matrix(old_positions, new_positions, old_center, new_center):
-    """Calculate the rotation matrix from old positions to new positions"""
-    # Subtract centers from positions
-    old_positions_centered = [pos - old_center for pos in old_positions]
-    new_positions_centered = [pos - new_center for pos in new_positions]
-
-    # Convert lists to numpy arrays
-    old_positions_centered = np.array(old_positions_centered)
-    new_positions_centered = np.array(new_positions_centered)
-
-    # Calculate rotation matrix using SVD
-    H = np.dot(new_positions_centered.T, old_positions_centered)
-    U, S, Vt = np.linalg.svd(H)
-    rotation_matrix = np.dot(Vt.T, U.T)
-
-    return rotation_matrix
-
-#Caculculation to find Translation
-def calculateCenterOfPoints(points, axis=0):
-    return  np.mean(points, axis)
-
-#Original Function currently that is used.
-def calculate_vertex_transformation(src_points, dst_points ):
-       # Subtract centroids
-    src_center = calculateCenterOfPoints(src_points)
-    dst_center = calculateCenterOfPoints(dst_points)
-    
-    src_points_centered = src_points - src_center
-    dst_points_centered = dst_points - dst_center
-
-    # Compute rotation
-    H = np.dot(src_points_centered.T, dst_points_centered)
-    U, S, Vt = np.linalg.svd(H)
-    rotation_matrix = np.dot(Vt.T, U.T)
-
-    # Check for reflection
-    if np.linalg.det(rotation_matrix) < 0:
-        Vt[-1, :] *= -1
-        rotation_matrix = np.dot(Vt.T, U.T)
-
-    # Ensure smallest rotation
-    d = (np.linalg.det(Vt) * np.linalg.det(U)) < 0.0
-    if d:
-        S[-1] = -S[-1]
-        Vt[-1, :] *= -1
-        rotation_matrix = np.dot(Vt.T, U.T)
-
-    # Check for reflection
-    if np.linalg.det(rotation_matrix) < 0:
-        # Flip the sign of the last column of Vt
-        Vt[-1, :] *= -1
-        rotation_matrix = np.dot(Vt.T, U.T)
-        
-    #rotation_matrix = np.linalg.inv(rotation_matrix)
-    
-    # Compute scale
-    src_points_transformed = np.dot(src_points_centered, rotation_matrix)
-    scale_x = np.linalg.norm(dst_points_centered[:, 0]) / np.linalg.norm(src_points_transformed[:, 0])
-    scale_y = np.linalg.norm(dst_points_centered[:, 1]) / np.linalg.norm(src_points_transformed[:, 1])
-    scale_z = np.linalg.norm(dst_points_centered[:, 2]) / np.linalg.norm(src_points_transformed[:, 2])
-    scale_matrix = np.diag([scale_x, scale_y, scale_z])
-    
-    # Debug non-matrix values
-    print("Position:", dst_center - src_center)
-    print("Scale:", scale_matrix)
-    print("Rotation:", rotation_matrix)
-
-
-    # Create transformation matrix
-    transformation_matrix = np.eye(4)
-    transformation_matrix[:3, :3] = np.dot(scale_matrix, rotation_matrix)
-    transformation_matrix[:3, 3] = dst_center - src_center
-    
-    #transformation_matrix[:3, :3] = rotation_matrix
-    #transformation_matrix[:3, 3] = dst_center - rotation_matrix @ src_center
-    
-
-    return transformation_matrix, src_center, dst_center
-
-
-def multiply_matrix(matrix, positions):
-    """
-    Multiply a matrix by a list of positions.
-    
-    Args:
-        matrix (list[list[float]]): The matrix to be multiplied.
-        positions (list[list[float]]): The list of positions to be multiplied.
-    
-    Returns:
-        list[list[float]]: The resulting positions after multiplication.
-    """
-    result = []
-    for position in positions:
-        new_position = [sum(a * b for a, b in zip(row, position)) for row in matrix]
-        result.append(new_position)
-    return result
-
-####################################################################################################
-#02_operators_debug.py
+#18_operators_debug.pymodule
 ####################################################################################################
 
 
@@ -2254,13 +3292,13 @@ def debug_print_applyAnimation(self, context):
         
 
 ####################################################################################################
-#03_operators_generic.py
+#19_operators_generic.pymodule
 ####################################################################################################
 
 
 
 ####################################################################################################
-#20_module_bl_current_obj_getters.py
+#20_module_bl_current_obj_getters.pymodule
 ####################################################################################################
 
 def get_current_Vertcount():
@@ -2278,7 +3316,7 @@ def get_current_Vertcount():
         return 0
 
 ####################################################################################################
-#21_module_op_pivot.py
+#21_module_op_pivot.pymodule
 ####################################################################################################
 
 def find_most_facing_axis(vector):
@@ -2694,7 +3732,7 @@ def setPivot(self, context):
     return None
 
 ####################################################################################################
-#22_module_bl_selector.py
+#22_module_bl_selector.pymodule
 ####################################################################################################
 
 def setSelectionforAllObjects(selected_Objects, state):
@@ -2703,7 +3741,7 @@ def setSelectionforAllObjects(selected_Objects, state):
     bpy.context.view_layer.update()              
 
 ####################################################################################################
-#30_module_bl_image.py
+#30_module_bl_image.pymodule
 ####################################################################################################
 
 def linear_to_sRGB(linear_value):
@@ -2840,7 +3878,7 @@ def math_getIndexByTile(xt, yt, tile_count_x):
     return yt * tile_count_x + xt
 
 ####################################################################################################
-#40_module_bl_normals.py
+#40_module_bl_normals.pymodule
 ####################################################################################################
 
 def cleanupSharpsAndSplits(self, context):
@@ -3014,7 +4052,7 @@ def splitNormals(self, context):
 
 
 ####################################################################################################
-#50_module_bl_rotationtool.py
+#50_module_bl_rotationtool.pymodule
 ####################################################################################################
 
 def rotate90DegL(self, context):
@@ -3111,7 +4149,13 @@ def clipRotation(self, context):
         obj.select_set(True) 
 
 ####################################################################################################
-#70_module_bl_vertexgroups.py
+#60_module_bl_uvs.pymodule
+####################################################################################################
+
+
+
+####################################################################################################
+#70_module_bl_vertexgroups.pymodule
 ####################################################################################################
 
                 
@@ -3298,7 +4342,7 @@ def get_common_vertex_groups_from_selected():
     return list(common_vertex_groups) if common_vertex_groups else []
 
 ####################################################################################################
-#71_module_bl_vertexmanipulation.py
+#71_module_bl_vertexmanipulation.pymodule
 ####################################################################################################
 
 
@@ -3349,7 +4393,7 @@ def set_vertex_positions_4dsafe(obj, vertex_indices, positions):
         obj.data.vertices[vertex_index].co = position 
 
 ####################################################################################################
-#80_module_bl_animation.py
+#80_module_bl_animation.pymodule
 ####################################################################################################
 
 
@@ -3404,7 +4448,7 @@ def createAnimation(obj, bone, transformation_matrix, last_frame):
 
 
 ####################################################################################################
-#81_module_bl_armatures.py
+#81_module_bl_armatures.pymodule
 ####################################################################################################
 
 
@@ -3738,74 +4782,95 @@ def apply_transformation_to_bone(obj, bone, transformation_matrix):
 
 
 ####################################################################################################
-#90_module_pg_keydata_management.py
+#99_modlule_kd_important_getters.pymodule
 ####################################################################################################
 
-#check if keydata to object exists and if return the index in the list
-def get_keydata_index_by_object_name(context, object_name):
-    """Get the index of the keydata with the given object name"""
-    tool_data = context.scene.bonery_tools_data
-    for index, key_data in enumerate(tool_data.key_data):
-        if key_data.object_name == object_name:
-            return index
-    return -1
 
-def remove_keydata(keydata, context):
-    """Remove the given keydata from the list"""
-    tool_data = context.scene.bonery_tools_data
-    index = -1
-    for i, kd in enumerate(tool_data.key_data):
-        if kd == keydata:
-            index = i
-            break
-    if index >= 0:
-        tool_data.key_data.remove(index)
-        # Set the selection index to the previous keydata if available
-        if tool_data.active_keydata >= len(tool_data.key_data):
-            tool_data.active_keydata = len(tool_data.key_data) - 1
-            
-
-def create_for_vertexgroupdata(keydata, group_name):
-    """Create a new vertexgroupdata for the given object"""
-    # Check if the vertexgroupdata already exists
-    for vertex_group_data in keydata.vertex_group_data:
-        if vertex_group_data.vertex_group_name == group_name:
-            return vertex_group_data
+        return {'FINISHED'}
     
-    # If the vertexgroupdata doesn't exist, create a new one
-    vertex_group_data = keydata.vertex_group_data.add()
-    vertex_group_data.vertex_group_name = group_name
-    vertex_group_data.last_frame = bpy.context.scene.frame_current  # Set the last frame to the current frame of the timeline
-    return vertex_group_data
+    
+    
+   
+ #Data Classes  
+    
+class Bonery_OT_sideloaderrecall(bpy.types.Operator):
+    """Operator for Bonery addon"""
+    bl_idname =  "bonery.sideloader_recall"
+    bl_label = "Sideloader Recall"
 
-def create_vertexpositiondata(vertex_group_data, vertex_id, vertex_position):
-    """Create a new vertexpositiondata for the given object"""
-    vertex_position_data = vertex_group_data.vertex_position_data.add()
-    vertex_position_data.vertex_id = vertex_id
-    vertex_position_data.vertex_position = vertex_position
-    return vertex_position_data
+    def execute(self, context):      
+        sideloader()
+        return {'FINISHED'}    
+    
+class VertexPositionData(bpy.types.PropertyGroup):
+    """Data for storing vertex positions"""
+    vertex_position: bpy.props.FloatVectorProperty(name="Vertex Position")
+    vertex_id: bpy.props.IntProperty(name="Vertex ID")
 
-#Getters
+class VertexGroupData(bpy.types.PropertyGroup):
+    """Data for storing vertex group IDs"""
+    vertex_group_id: bpy.props.IntProperty(name="Vertex Group ID")
+    vertex_group_name: bpy.props.StringProperty(name="Vertex Group ID")
+    vertex_position_data: bpy.props.CollectionProperty(type=VertexPositionData, name="Vertex Position Data")
+    parentId : bpy.props.IntProperty(name="Parent ID", default=-1)
+    parentName : bpy.props.StringProperty(name="Parent Name", default="")
+    last_frame: bpy.props.IntProperty(name="Last Frame", default=-1)
 
-def get_vertexgroupdata_by_name(keydata, group_name):
-    """Get the vertexgroupdata with the given name"""
-    for vertex_group_data in keydata.vertex_group_data:
-        if vertex_group_data.vertex_group_name == group_name:
-            return vertex_group_data
-    return None
+class Keydata(bpy.types.PropertyGroup):
+    """Data for storing key information"""
+    vertex_group_data: bpy.props.CollectionProperty(type=VertexGroupData, name="Vertex Group Data")
+    object_name: bpy.props.StringProperty(name="Object Name", default="")
+    object_id: bpy.props.StringProperty(name="Object ID", default="")
+    active_vertexgroupdata : bpy.props.IntProperty(name="Active Index", default=0)
+    
+    
+#Settings Data
+class Settingsdata(bpy.types.PropertyGroup):
+    """Settings for Bonery addon"""
+    my_property: bpy.props.StringProperty(name="My Property")
+    flicktimeline: bpy.props.BoolProperty(name="Flick Timeline",description="Enable or disable flicking the timeline",default=True)
 
-def get_vertexpositiondata_by_id(vertex_group_data, vertex_id):
-    """Get the vertexpositiondata with the given ID"""
-    for vertex_position_data in vertex_group_data.vertex_position_data:
-        if vertex_position_data.vertex_id == vertex_id:
-            return vertex_position_data
-    return None
+    debuggingsubmenu: bpy.props.EnumProperty(
+        items=[
+            ('none', 'None', 'Hide Menus'),
+            ('vertexprint', 'Vertex Print', 'Print Vertexpositions'),
+            ('a', 'A', 'xxx'),
+            ('b', 'B', 'xxx'),
+            ('c', 'C', 'xxx'),
+            ('d', 'D', 'xxx'),
+            ('e', 'E', 'xxx'),
+            ('f', 'F', 'xxx'),
+            
+        ],
+        name="debugmenu",
+        description="Which type of Debugging Menu to use",
+        default='none'
+    )
+
+    
+class Tooldata(bpy.types.PropertyGroup):
+    """Tool storage for Bonery module"""
+    my_tool: bpy.props.PointerProperty(type=bpy.types.Object, name="My Tool")
+    key_data: bpy.props.CollectionProperty(type=Keydata, name="Key Data")
+    active_keydata : bpy.props.IntProperty(name="Active Index", default=0)
+
+
+class Tooldata_Renamer(bpy.types.PropertyGroup):
+    """Tool storage for Renamer module"""
+    Prefix : bpy.props.StringProperty(name="Prefix", default="")
+    Suffix : bpy.props.StringProperty(name="Suffix", default="")
+
+
+#Function Importer
+
 
 ####################################################################################################
-#99_modlule_kd_important_getters.py
+#functionimporttest.pymodule
 ####################################################################################################
 
-
+def sideloadtester():
+    print("SIDELOAD Importer Module Operational!")
+    return
 #MODULE_INSTALLER_SPACE_END_00000001
 
 #region <Utility> <Methods>

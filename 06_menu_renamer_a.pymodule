@@ -1,0 +1,373 @@
+class UVC_PT_extratools_5(uvc_extratoolpanel, bpy.types.Panel):
+    bl_label = "Renamer"
+    bl_parent_id = "anifanpostuptools_PT_extratools"
+    
+    
+    def draw(self, context):
+        layout = self.layout
+        box = layout.box() #NEW BOX
+        row=box.row()
+
+        Tooldata_Renamer= get_current_tooldata_renamer(context) #Get Tooldata
+
+
+
+        #Prop Prefix
+        row=box.row()
+        row.prop (Tooldata_Renamer, "Prefix", text="Prefix")
+        row=box.row()
+        row.label(text="_")
+        row=box.row()
+        row.prop (Tooldata_Renamer, "Suffix", text="Suffix")
+
+
+
+
+        box = layout.box() #NEW BOX
+        row=box.row()
+        row.label(text="Size:", icon="CON_SIZELIMIT")
+
+        row=box.row()
+        subsuffix="none"
+        op=row.operator(UVC_Operator_rename.bl_idname, text="None")
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=""
+
+        subsuffix="Small"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+        
+        subsuffix="Medium"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Large"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Color:", icon="COLOR")
+
+        row=box.row()
+        subsuffix="Gray"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="White"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Black"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        row=box.row()
+        subsuffix="Red"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Green"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Blue"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        
+        row=box.row()
+        subsuffix="Yellow"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Orange"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Orange"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Purple"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Class (Main):", icon="PMARKER_ACT")
+
+        row=box.row()
+        
+        subsuffix="Base"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Raw"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="Main"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Class (Sub):", icon="KEYFRAME_HLT")
+
+        row=box.row()
+
+        subsuffix="Extra"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Sub"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="Alt"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Direction (Sky):", icon="OBJECT_ORIGIN")
+
+        row=box.row()
+
+        subsuffix="North"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="South"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="East"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="West"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Direction (Relative):", icon="ORIENTATION_LOCAL")
+
+        row=box.row()
+
+        subsuffix="Top"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Bottom"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="Left"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Right"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix       
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Timestamp:", icon="TIME")
+
+        row=box.row()
+
+        subsuffix="Pre"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Current"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="After"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Later"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix  
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Marks:", icon="BOOKMARKS")
+
+        row=box.row()
+
+        subsuffix="New"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Temp"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="Placeholder"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Test"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix  
+
+    
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Part:", icon="TRACKER")
+
+        row=box.row()
+
+        subsuffix="Beginn"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Middle"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="End"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+            
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="State:", icon="PIVOT_BOUNDBOX")
+
+        row=box.row()
+
+        subsuffix="Open"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Closed"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="Exposed"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        box = layout.box() #NEW BOX
+
+        row=box.row()
+        row.label(text="Quality:", icon="META_DATA")
+
+        row=box.row()
+
+        subsuffix="Broken"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+
+        subsuffix="Damaged"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix
+                
+        subsuffix="Intact"
+        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
+        op.PreFix=Tooldata_Renamer.Prefix
+        op.Suffix=Tooldata_Renamer.Suffix
+        op.Suffix_Sub=subsuffix

@@ -1,0 +1,61 @@
+class UVC_Operator_setOrigin(bpy.types.Operator):
+
+    """ OPERATOR
+    Adds a Panel
+    """
+
+
+    bl_idname = "uvc.setorigin"
+    bl_label = "sets the Origin of all Selected Objects"
+    
+    
+    
+    height: bpy.props.EnumProperty(
+        items=[
+            ('tl', 'Top Left', 'ltl', '', 1),
+            ('tm', 'Top Mid', 'tm', '', 2),    
+            ('tr', 'Top Right', 'tr', '', 3),
+            ('ml', 'Mid Left', 'ml', '', 4),
+            ('mm', 'Mid ', '', 'mm', 5),    
+            ('mr', 'Mid Right', 'mr', '', 6),
+            ('bl', 'Bottom Left', 'bl', '', 7),
+            ('bm', 'Bottom Mid', 'bm', '', 8),    
+            ('br', 'Bottom Right', 'br', '', 9),
+            ('ct', 'Center', 'cr', '', 10),
+        ],
+        name="Pivot Placement",
+        description="If the Pivot should be placed on a Edge, Corner or Face",
+        default='mm'
+    )
+    
+
+    direction: bpy.props.EnumProperty(
+        items=[
+            ('x', 'X', 'X', '', 1),
+            ('xn', 'X-', 'X-', '', 2),    
+            ('y', 'Y', 'Y', '', 3),
+            ('yn', 'Y-', 'Y-', '', 4),    
+            ('z', 'Z', 'Z', '', 5),
+            ('zn', 'Z-', 'Z-', '', 6),    
+        ],
+        name="Which Direction",
+        description="Which Direction to set the Pivot",
+        default='zn'
+    )
+    
+    transformspace: bpy.props.EnumProperty(
+        items=[
+            ('objectspace', 'Object', 'Direction by Objectspace', '', 1),
+            ('worldspace', 'World', 'Direction by Worldspace', '', 2),    
+            ('auto', 'Auto', 'Will Clip the Objectrotation by the most fitting Worldspace direction', '', 3),
+        ],
+        name="Which Direction",
+        description="Which Direction to set the Pivot",
+        default='objectspace'
+    )
+    
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Setting Origin of Selection")
+        setPivot(self=self, context=ctx)
+        
+        return {'FINISHED'}

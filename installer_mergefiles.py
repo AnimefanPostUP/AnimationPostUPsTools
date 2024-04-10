@@ -11,14 +11,14 @@ def insert_modules():
     end_ignore = "#MODULE_INSTALLER_SPACE_END_IGNORE_0013000001" + os.linesep
     
     # Define the blacklist
-    fileblacklist = ["__init__.py", "auto_load.py", "animationpostupstools.py", "function_names.py", "installer_mergefiles.py","module_animationfanpostupstools.py","animationfanpostup_placeholder.py"]
+    fileblacklist = ["__init__.py", "auto_load.py", "animationpostupstools.py", "function_names.pymodule", "installer_mergefiles.py","module_animationfanpostupstools.pymodule","animationfanpostup_placeholder.pymodule"]
     # Get the current directory
     current_directory = os.path.dirname(os.path.abspath(__file__))
 
 
 
     # Get all Python files in the current directory
-    files = glob.glob(os.path.join(current_directory, "*.py"))
+    files = glob.glob(os.path.join(current_directory, "*.pymodule"))
 
     # Filter out the blacklisted files
     files = [file for file in files if os.path.basename(file) not in fileblacklist]
@@ -32,7 +32,7 @@ def insert_modules():
         print(file)
 
     # Read the target file
-    module_file_path = os.path.join(current_directory, "module_animationfanpostupstools.py")
+    module_file_path = os.path.join(current_directory, "module_animationfanpostupstools.pymodule")
     
     print(f"Reading module file: {module_file_path}")
     
@@ -70,58 +70,113 @@ def insert_modules():
 
     start_ignore_index = -1
     end_ignore_index = -1    
+    
+    
+    #find line with MODULE_EARLY INSTALLERSPACE_START_00000000
+    
+    early_start_marker = "#MODULE_EARLY_INSTALLERSPACE_START_00000000" + os.linesep
+    early_index = -1
+    for index, line in enumerate(lines):
+        #trim and compare the line
+        line = line.strip()
+        if line == early_start_marker.strip():
+            early_index = index
+            break
+        
+    
         
         
     #list to store function names   
     function_names = []
     functions_module = []
     functionlinenumber = []
+         
         
     # Insert the new content
     for file in files:
-        with open(file, "r") as source_file:
-            # Read the entire file content first
-            file_content = source_file.read()
-
-            # Split the content into lines for processing
-            lines_in_file = file_content.split('\n')
-
-            # Read line by line and store all the function names
-            for line, line_number in zip(lines_in_file, range(len(lines_in_file))):
-                if "def " in line:
-                    function_name = line.split("def ")[1].split("(")[0]
-                    function_names.append(line)
-                    #get files name only
-                    filename    = os.path.basename(file)
-                    functions_module.append(filename)
-                    functionlinenumber.append(line_number)
-                    print(f"Function name: {function_name} in file: {file} at line: {line_number}")
-
-            lines.insert(start_index, "\n")
-            # Add a very large comment text 3 lines 
-            lines.insert(start_index+1, "#"*100+"\n")
-            # Title of the file
-            lines.insert(start_index+2, "#"+os.path.basename(file)+"\n")
-            lines.insert(start_index+3, "#"*100+"\n")
-
-            lines.insert(start_index+4, "\n")
-
-            # Insert the content of the file
-            lines.insert(start_index+5, file_content)
-            # Insert footer comment
-
-            # Add extra line behind the module
-            lines.insert(start_index+6, "\n")
-            start_index += 7
-
-        for index, line in enumerate(lines):
-            line = line.strip()
-            if line == start_ignore.strip():
-                start_ignore_index = index
-            elif line == end_ignore.strip():
-                end_ignore_index = index
-                break
         
+        #if containes menu in the name
+        if "menu" in file and early_index != -1:
+            # write the file to early index
+            with open(file, "r") as source_file:
+                # Read the entire file content first
+                file_content = source_file.read()
+
+                # Split the content into lines for processing
+                lines_in_file = file_content.split('\n')
+
+                # Read line by line and store all the function names
+                for line, line_number in zip(lines_in_file, range(len(lines_in_file))):
+                    if "def " in line:
+                        function_name = line.split("def ")[1].split("(")[0]
+                        function_names.append(line)
+                        #get files name only
+                        filename    = os.path.basename(file)
+                        functions_module.append(filename)
+                        functionlinenumber.append(line_number)
+                        print(f"Function name: {function_name} in file: {file} at line: {line_number}")
+
+                lines.insert(early_index, "\n")
+                # Add a very large comment text 3 lines 
+                lines.insert(early_index+1, "#"*100+"\n")
+                # Title of the file
+                lines.insert(early_index+2, "#"+os.path.basename(file)+"\n")
+                lines.insert(early_index+3, "#"*100+"\n")
+
+                lines.insert(early_index+4, "\n")
+
+                # Insert the content of the file
+                lines.insert(early_index+5, file_content)
+                # Insert footer comment
+
+                # Add extra line behind the module
+                lines.insert(early_index+6, "\n")
+                early_index += 7
+            
+        else:
+            with open(file, "r") as source_file:
+                # Read the entire file content first
+                file_content = source_file.read()
+
+                # Split the content into lines for processing
+                lines_in_file = file_content.split('\n')
+
+                # Read line by line and store all the function names
+                for line, line_number in zip(lines_in_file, range(len(lines_in_file))):
+                    if "def " in line:
+                        function_name = line.split("def ")[1].split("(")[0]
+                        function_names.append(line)
+                        #get files name only
+                        filename    = os.path.basename(file)
+                        functions_module.append(filename)
+                        functionlinenumber.append(line_number)
+                        print(f"Function name: {function_name} in file: {file} at line: {line_number}")
+
+                lines.insert(start_index, "\n")
+                # Add a very large comment text 3 lines 
+                lines.insert(start_index+1, "#"*100+"\n")
+                # Title of the file
+                lines.insert(start_index+2, "#"+os.path.basename(file)+"\n")
+                lines.insert(start_index+3, "#"*100+"\n")
+
+                lines.insert(start_index+4, "\n")
+
+                # Insert the content of the file
+                lines.insert(start_index+5, file_content)
+                # Insert footer comment
+
+                # Add extra line behind the module
+                lines.insert(start_index+6, "\n")
+                start_index += 7
+
+            for index, line in enumerate(lines):
+                line = line.strip()
+                if line == start_ignore.strip():
+                    start_ignore_index = index
+                elif line == end_ignore.strip():
+                    end_ignore_index = index
+                    break
+            
     
                     
     if start_ignore_index != -1 and end_ignore_index != -1:
@@ -183,11 +238,16 @@ def insert_modules():
             
             
             for i, name in enumerate(function_names):
+                #skip if name contains execute or draw
+                if "execute" in name or "draw" in name or "invoke":
+                    continue
                 linestring = linestring+""+f"{name}  return \t'file: " + functions_module[i] + "    line: "+ str(functionlinenumber[i]) +"'\n"
 
             linestring=linestring+"\n"
             lines_module.insert(start_ignore_index +1, linestring)
             module_file.writelines(lines_module)
+            
+            
                                         
                                         
             

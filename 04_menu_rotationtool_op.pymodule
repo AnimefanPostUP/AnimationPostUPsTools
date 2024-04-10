@@ -1,0 +1,120 @@
+#Operator
+class UVC_Operator_fixRotation(bpy.types.Operator):
+    """ OPERATOR
+    Adds a Panel
+    """
+    bl_idname = "anifanpostuptools.fixrotation"
+    bl_label = "Fix Rotation"
+    
+    #create enums
+    axis: bpy.props.EnumProperty(
+        items=[
+            ('X', "X Axis", ""),
+            ('Y', "Y Axis", ""),
+            ('Z', "Z Axis", ""),
+            ('A', "All Axis", ""),
+        ],
+        name="Axis",
+        description="Select the Axis to fix",
+        default='A'
+    )
+    
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Fixing Rotation")
+        fixRotation(self=self, ctx=ctx)
+        return {'FINISHED'}
+    
+def fixRotation(self, ctx):
+    #get selected object and make sure in edit mode
+    obj = bpy.context.active_object
+    bpy.ops.object.mode_set(mode='EDIT')
+    
+    #get the selected using bmesh
+    bm = bmesh.from_edit_mesh(obj.data)
+    selected = [f for f in bm.faces if f.select]
+    
+    #rotate the object by the selected face normal so the normal is in the direction of the axis of the world
+    for face in selected:
+        normal = face.normal
+        if self.axis == 'X':
+            target = Vector((1, 0, 0))
+        elif self.axis == 'Y':
+            target = Vector((0, 1, 0))
+        elif self.axis == 'Z':
+            target = Vector((0, 0, 1))
+        elif self.axis == 'A':
+            target = Vector((1, 1, 1))
+        
+        rotation = normal.rotation_difference(target)
+        
+        # Apply the rotation to the entire object
+        obj.rotation_euler = rotation.to_euler()
+    
+    # Switch back to object mode
+    bpy.ops.object.mode_set(mode='OBJECT')
+    
+    
+        
+class UVC_Operator_rotate90DegL(bpy.types.Operator):    
+    """ OPERATOR Adds a Panel"""
+
+
+    bl_idname = "wm.uvc_rotate90degl"
+    bl_label = "Rotates 90 degrees"
+    
+
+    
+    
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Rotating")
+        rotate90DegL(self=self, context=ctx)
+        
+        return {'FINISHED'}
+  
+class UVC_Operator_rotate90DegR(bpy.types.Operator):    
+    """ OPERATOR Adds a Panel"""
+
+
+    bl_idname = "wm.uvc_rotate90degr"
+    bl_label = "Rotates 90 degrees"
+    
+
+    
+    
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Rotating")
+        rotate90DegR(self=self, context=ctx)
+        return {'FINISHED'}
+
+class UVC_Operator_clipRotation(bpy.types.Operator):    
+    """ OPERATOR Adds a Panel"""
+
+
+    bl_idname = "wm.uvc_cliprotation"
+    bl_label = "Clips the Rotation to 15 Degrees into the shortest direction"
+    
+
+    
+    
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Clipping Rotation")
+        clipRotation(self=self, context=ctx)
+        
+        return {'FINISHED'}
+    
+    
+    
+
+class UVC_Operator_rerouteSnapping(bpy.types.Operator):    
+    """ OPERATOR Adds a Panel"""
+
+
+    bl_idname = "wm.uvc_splitnormals"
+    bl_label = "Splits the Normals of all selected Objects"
+    #create integer
+    angle : bpy.props.IntProperty(name="Angle", default=30, min=-360, max=360)
+
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Smoothing")
+        splitNormals(self=self, context=ctx)
+        return {'FINISHED'}

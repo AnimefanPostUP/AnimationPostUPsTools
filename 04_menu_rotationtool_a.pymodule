@@ -1,0 +1,38 @@
+#Rotationrool        
+class UVC_PT_extratools_2(uvc_extratoolpanel, bpy.types.Panel):
+    bl_label = "Rotationtool"
+    bl_parent_id = "anifanpostuptools_PT_extratools"
+    
+    
+    def draw(self, context):
+        layout = self.layout
+
+        box = layout.box() #NEW BOX
+        box.label(text="Rotationclip:")   
+        row=box.row()   
+        op=row.operator(UVC_Operator_clipRotation.bl_idname, text="Clip by 15°")
+        row=box.row()   
+        
+        layout.row().separator()
+        box.label(text="Quickrotate:")   
+        row=box.row()   
+        op=row.operator(UVC_Operator_rotate90DegL.bl_idname, text="Rotate L")
+        row=box.row()   
+        op=row.operator(UVC_Operator_rotate90DegR.bl_idname, text="Rotate R")
+        row=box.row()   
+        
+        #Create Operator to fix the rotation of the object by selected face normal
+        #create one operator that allows to fix x,y,z, or all axis
+        
+        #Operator
+        row=box.row()
+        row.label(text="Fix Rotation by Face Normal:")
+        row=box.row()
+        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="X Axis")
+        op.axis = 'X'
+        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="Y Axis")
+        op.axis = 'Y'
+        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="Z Axis")
+        op.axis = 'Z'
+        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="All Axis")
+        op.axis = 'A'

@@ -1,0 +1,318 @@
+
+#Generic Tools:
+class uvc_extratoolpanel():
+    """ %PANEL%
+    Drawing the Colors and eventually Displayoption Buttons in Future
+    """
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "AnimfanPostUP"
+    bl_options = {"DEFAULT_CLOSED"}
+ 
+#Core Menu    
+class extratool_PT_panel(uvc_extratoolpanel, bpy.types.Panel):
+    """ %PANEL%
+    Drawing the Colors and eventually Displayoption Buttons in Future
+    """
+    bl_idname = "anifanpostuptools_PT_extratools"
+    bl_label = "Extra Tools"
+     
+    def draw(self, ctx):
+        layout = self.layout
+
+#Pivotsetter
+class UVC_PT_extratools_1(uvc_extratoolpanel, bpy.types.Panel):
+    bl_label = "Pivot Setter"
+    bl_parent_id = "anifanpostuptools_PT_extratools"
+    
+    
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        
+        settingsdata=bpy.context.scene.ttb_settings_data
+
+        box = layout.box() #NEW BOX
+        box.label(text="Set Pivot")     
+        row=box.row()   
+        box.label(text="Top/Bottom are Z Axies")  
+        row=box.row()   
+        box.label(text="in Z/Z- mode its the Y Axies")  
+        
+        row.prop(settingsdata, "direction", expand=True) 
+        row=box.row()    
+        row.prop(settingsdata, "transformspace", expand=True) 
+        row=box.row()    
+        
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="RADIOBUT_ON")
+        op.height="tl"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="TRIA_UP")
+        op.height="tm"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="RADIOBUT_ON")
+        op.height="tr"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        row=box.row()    
+        
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="TRIA_LEFT")
+        op.height="ml"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="RADIOBUT_ON")
+        op.height="mm"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="TRIA_RIGHT")
+        op.height="mr"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        row=box.row()    
+        
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="RADIOBUT_ON")
+        op.height="bl"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="TRIA_DOWN")
+        op.height="bm"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="RADIOBUT_ON")
+        op.height="br"
+        op.direction=settingsdata.direction
+        op.transformspace=settingsdata.transformspace
+        row=box.row()    
+        
+        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="Average")
+        op.height="ct"
+        op.direction=settingsdata.direction
+        op.direction=settingsdata.direction
+        row=box.row()    
+  
+
+
+
+        
+        
+    
+
+class UVC_PT_extratools_4(uvc_extratoolpanel, bpy.types.Panel):
+    bl_label = "Vertex Groups"
+    bl_parent_id = "anifanpostuptools_PT_extratools"
+    
+    
+    def draw(self, context):
+        layout = self.layout
+        box = layout.box() #NEW BOX
+        row=box.row()
+        
+        settingsdata = bpy.context.scene.ttb_settings_data
+        
+        box.label(text="Select shared Vertexgroup:")   
+        row=box.row()   
+        op=row.operator(UVC_Operator_selectByGroup.bl_idname, text="Select SimilarGroup")
+
+
+
+       
+
+                        
+                
+                        
+                        
+
+# operator UVC_Operator_selectByGroup
+class UVC_Operator_selectByGroup(bpy.types.Operator):
+    """ OPERATOR
+    Adds a Panel
+    """
+    bl_idname = "anifanpostuptools.selectbygroup"
+    bl_label = "Select Similar Group"
+    
+    def execute(self, ctx):
+        bpy.ops.ed.undo_push(message = "Attempt Selecting by Group")
+        selectByGroup(self, ctx)
+        return {'FINISHED'}
+    
+class UVC_Operator_selectByGroupTool(bpy.types.Operator):
+    """ OPERATOR
+    Adds a Panel
+    """
+    bl_idname = "anifanpostuptools.selectbygrouptool"
+    bl_label = "Select Similar Group"
+    
+    def invoke(self, context, event):
+        bpy.ops.ed.undo_push(message="Select By Group")
+        # Perform the default selection operation
+        bpy.ops.view3d.select(location=(event.mouse_region_x, event.mouse_region_y))
+
+        # Then execute your custom operation
+        selectByGroup(self, context)
+
+        return {'FINISHED'}
+    
+class UVC_Operator_rename(bpy.types.Operator):
+    """ OPERATOR
+    Adds a Panel
+    """
+    bl_idname = "anifanpostuptools.rename"
+    bl_label = "Rename"
+
+    PreFix: bpy.props.StringProperty(name="Prefix", default="")
+    Suffix: bpy.props.StringProperty(name="Suffix", default="") 
+    Suffix_Sub: bpy.props.StringProperty(name="Suffix Sub", default="")
+    
+    def execute(self, context):
+        bpy.ops.ed.undo_push(message="Rename")
+        rename (self=self, context=context)
+        return {'FINISHED'}
+    
+def rename(self, context):
+    # Get active Objects
+    selected_Objects = bpy.context.selected_objects
+
+    # Get Prefix and Suffix from Operator
+    prefix = self.PreFix
+    suffix = self.Suffix
+    suffix_Sub = self.Suffix_Sub
+
+    prefixIsSet = False
+    suffixIsSet = False
+    suffix_SubIsSet = False
+
+    if not prefix == "":
+        prefixIsSet = True
+
+    if not suffix == "":
+        suffixIsSet = True
+
+    if not suffix_Sub == "":
+        suffix_SubIsSet = True
+
+    # Select the objects you want to rename
+    selected_objects = bpy.context.selected_objects
+    for obj in selected_objects:
+        new_name = prefix if prefixIsSet else ""
+        if suffixIsSet:
+            new_name += f"_{suffix}" if prefixIsSet else suffix
+        if suffix_SubIsSet:
+            new_name += f"_{suffix_Sub}" if new_name else suffix_Sub
+        obj.name = new_name
+        
+        
+
+class UVC_Operator_transformByGroupTool(bpy.types.Operator):
+    """ OPERATOR
+    Adds a Panel
+    """
+    bl_idname = "anifanpostuptools.transformbygrouptool"
+    bl_label = "Transform Similar Group"
+    
+    def invoke(self, context, event):
+        print("activated Transformtool")
+        # Get the active mesh
+        obj = context.active_object
+        me = obj.data
+        bm = bmesh.from_edit_mesh(me)
+        bpy.ops.ed.undo_push(message="Select By Group Transform")
+        # Initialize a list to store selected faces
+        selected_faces = []
+
+        # Iterate through faces to find selected ones
+        active_face = None
+        
+        for face in bm.faces:
+            for element in reversed(bm.select_history):
+                if isinstance(element, bmesh.types.BMFace):
+                    face = element
+                    break
+
+            if face is None: 
+                return (None)
+            if face.select and active_face is None:
+                active_face=face
+    
+    
+
+        if active_face is None: 
+            print("canceled")
+            return {'CANCELLED'}
+
+        
+
+        # Find the most facing axis of the active face
+        most_facing_axis = find_most_facing_axis(active_face.normal)
+        
+        print (most_facing_axis)
+
+        currentOrientationMode = bpy.context.scene.transform_orientation_slots[0].type
+        #Set mode to local
+        bpy.context.scene.transform_orientation_slots[0].type = 'LOCAL'
+        
+        # Set the constraint axis for the transform operator
+        constraint_axis = (abs(most_facing_axis.x) == 1.0, abs(most_facing_axis.y) == 1.0, abs(most_facing_axis.z) == 1.0)
+        
+        # Call the transform.translate operator with the constraint axis
+        bpy.ops.transform.translate('INVOKE_DEFAULT', constraint_axis=constraint_axis)
+        
+        #revert to old mode
+        bpy.context.scene.transform_orientation_slots[0].type = currentOrientationMode
+
+        return {'RUNNING_MODAL'}
+    
+class AutoGroupSelector(WorkSpaceTool):
+    bl_space_type = 'VIEW_3D'
+    bl_context_mode = 'EDIT_MESH'
+
+    bl_idname = "anifanpostuptools.auto_group_selector"
+    bl_label = "Auto Group Selector"
+    bl_description = (
+        "This is a tooltip\n"
+        "with multiple lines"
+    )
+    bl_icon = "ops.generic.select"
+    bl_widget = None
+    bl_operator = UVC_Operator_selectByGroupTool.bl_idname
+    
+    bl_keymap = (
+        ("anifanpostuptools.selectbygrouptool", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+        ("anifanpostuptools.selectbygrouptool", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
+        ("anifanpostuptools.transformbygrouptool", {"type":"G", "value": 'PRESS'}, None),
+    )
+
+    # def draw_settings(context, layout, tool):
+    #     #props = tool.operator_properties("view3d.select_lasso")
+    #     #layout.prop(props, "mode")
+    def draw_settings(context, layout, tool):
+        pass
+
+
+class AutoGroupSelectorObject(WorkSpaceTool):
+    bl_space_type = 'VIEW_3D'
+    bl_context_mode = 'OBJECT'
+
+    bl_idname = "anifanpostuptools.auto_group_selector_object"
+    bl_label = "Auto Group Selector"
+    bl_description = (
+        "This is a tooltip\n"
+        "with multiple lines"
+    )
+    bl_icon = "ops.generic.select"
+    bl_widget = None
+    bl_operator = "view3d.select"
+    
+    bl_keymap = (
+        ("view3d.select", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
+        ("view3d.select", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG'}, None),
+    )
+
+    def draw_settings(context, layout, tool):
+        pass
+    
+
+    
+
+

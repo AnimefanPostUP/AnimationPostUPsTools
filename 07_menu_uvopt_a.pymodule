@@ -1,0 +1,14 @@
+
+#create another panel
+class UVC_PT_extratools_6(uvc_extratoolpanel, bpy.types.Panel):
+    bl_label = "UV Optimizer"
+    bl_parent_id = "anifanpostuptools_PT_extratools"
+    
+    
+    def draw(self, context):
+        layout = self.layout
+        box = layout.box() #NEW BOX
+        row=box.row()
+        
+        settingsdata = bpy.context.scene.ttb_settings_data
+        
