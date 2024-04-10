@@ -15,6 +15,9 @@ import importlib.util
 import re
 import glob
 
+#added for functionbuffering
+if(0>1):
+    from function_names import *
 
 
 
@@ -40,6 +43,13 @@ import glob
 #     return functions
 
 #Function Importer
+
+#MODULE_INSTALLER_SPACE_START_00000000
+
+#MODULE_INSTALLER_SPACE_END_00000001
+
+
+''' DEPRECATED SIDELOADER; USE MODULE INSTALL SCRIPT INSTEAD!
 def import_function_from_file(file_name, function_name):
     current_directory = os.path.dirname(__file__)
     file_path = os.path.join(current_directory, file_name)
@@ -80,30 +90,42 @@ def sideloader():
 
     #get Directory
     current_directory = os.path.dirname(__file__)
+    
+    addons_directory = os.path.join(current_directory, 'addons')#added for functionbuffering
 
     #get Python files
     files = find_python_files(current_directory)
+    
+    # Use os.path.join to create the full path to the file
+    function_file_path = os.path.join(addons_directory, 'function_names.py')
 
     #fileblacklist
-    fileblacklist = ["__init__.py", "auto_load.py", "animationpostupstools.py"]
-
-    for file in files: #Iterate Files 
-        if(file in fileblacklist):
-            print ("SIDELOAD filter: "+file)
-            continue
-        print ("SIDELOAD File: "+file)
-        full_file_path = os.path.join(current_directory, file)
-        functionnames=find_function_names(full_file_path) #Get Functionnames
-        for function_name in functionnames: #Iterate Functionnames
-            print ("SIDELOAD Function: "+file+" - "+function_name)
-            #import_function_from_file(full_file_path, function_name) #Import Function
-            inject_code_from_file (full_file_path) #Inject Code
+    fileblacklist = ["__init__.py", "auto_load.py", "animationpostupstools.py", "function_names.py", "function_names.py"]
+    
+    with open(function_file_path, 'w') as function_file: #added for functionbuffering
+        for file in files: #Iterate Files 
+            if(file in fileblacklist):
+                print ("SIDELOAD filter: "+file)
+                continue
+            print ("SIDELOAD File: "+file)
+            full_file_path = os.path.join(current_directory, file)
+            functionnames=find_function_names(full_file_path) #Get Functionnames
+            for function_name in functionnames: #Iterate Functionnames
+                print ("SIDELOAD Function: "+file+" - "+function_name)
+                #import_function_from_file(full_file_path, function_name) #Import Function
+                inject_code_from_file (full_file_path) #Inject Code
+                
+                # Write the function name to the new file
+                function_file.write(f'def {function_name}(): pass\n') #added for functionbuffering
 
     print ("SIDELOAD END")
 
 #Tester
 sideloader()
 sideloadtester()
+
+
+'''
 
 #Generic Tools:
 class uvc_extratoolpanel():

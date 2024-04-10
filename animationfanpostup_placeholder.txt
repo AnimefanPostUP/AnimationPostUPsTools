@@ -1,0 +1,34 @@
+#Create a simple blender ui panel with a button that will create a new postup placeholder object
+
+import bpy
+class AnimationfanPostUP_PT_CorePanel(bpy.types.Panel):
+    """Core Panel for Bonery addon"""
+    bl_label = "Core"
+    bl_idname = "anifanpostuptools_PT_core_panel"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'AnimfanPostUP'
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator("object.create_postup_placeholder", text="Create Placeholder")
+
+class CreatePostUPPlaceholder(bpy.types.Operator):
+    bl_idname = "object.create_postup_placeholder"
+    bl_label = "Create PostUP Placeholder"
+
+    def execute(self, context):
+        bpy.ops.mesh.primitive_cube_add()
+        bpy.context.object.name = "PostUP_Placeholder"
+        return {'FINISHED'}
+
+def register():
+    bpy.utils.register_class(AnimationfanPostUP_PT_CorePanel)
+    bpy.utils.register_class(CreatePostUPPlaceholder)
+
+def unregister():
+    bpy.utils.unregister_class(AnimationfanPostUP_PT_CorePanel)
+    bpy.utils.unregister_class(CreatePostUPPlaceholder)
+
+if __name__ == "__main__":
+    register()
