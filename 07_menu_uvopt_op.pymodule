@@ -151,10 +151,32 @@ def createOptimizedUV(self, context):
             # Pass the name of the temporary file as an argument
             args = [temp_file_name, str(width_img), str(height_img)]
             
-            #run subprocesses in paralel 
-            
-            
-            completed_process = subprocess.run(['python', script_path_average] + args, text=True, capture_output=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            # Define the scripts and target images
+            scripts_and_images = [
+                (script_path_average, imageAverage),
+                (script_path_gradient, imageGradient),
+                (script_path_lines, imageLines),
+                (script_path_details, imageDetails),
+                (script_path_edges, imageEdges),
+                (script_path_orientation, imageOrientation),
+                (script_path_text, imageText)
+            ]
+
+                        
+            # Prepare the commands to run the scripts
+            commands = [['python', script_path] + args for script_path, _ in scripts_and_images]
+
+            # Start each command
+            #procs = [subprocess.run(i, stdout=subprocess.PIPE, stderr=subprocess.PIPE, creationflags=subprocess.CREATE_NEW_CONSOLE) for i in commands]
+            '''
+            # Wait for each command to complete and process its output
+            for p, (_, targetimage) in zip(procs, scripts_and_images):
+                stdout, _ = p.communicate()
+                process_completed_process(stdout.decode(), image, targetimage, width_img, height_img)
+                #wait
+            '''
+            #'''
+            completed_process = subprocess.run(['python', script_path_average] + args, text=True, capture_output=True, creationflags=subprocess.CREATE_NEW_CONSOLE)  
             #save the result of the subprocess so it doesnt get lost
             completed_process_stdout = completed_process.stdout
             error_process = completed_process.stderr
@@ -196,7 +218,7 @@ def createOptimizedUV(self, context):
             error_process = completed_process.stderr
             print ("error: "+error_process)
             process_completed_process(completed_process_stdout, image, imageText, width_img, height_img)            
-                  
+            #'''      
             
             
             
@@ -207,7 +229,15 @@ def createOptimizedUV(self, context):
             # Iterate all islands
         for i, uv in enumerate(uvIslands):
             print("Island: " + str(i))
-       
+            
+
+def run_process(command):
+    process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    if stderr:
+        print(f"Error: {stderr.decode()}")
+    return stdout.decode()
+
        
 def writeImagePixels(image, pixels):
     #check size and resize if needed
@@ -245,13 +275,11 @@ def img_getImagePixelIndex(xt, yt, imagewidth):
     
     return (yt * imagewidth + xt)*4    
 
-def unpackImageArray(imageArray, width, height):
-    unpacked = []
-    for y in range(height):
-        for x in range(width):
-            pixel = readImagePixel_INT(imageArray, x, y, width, height)
-            unpacked.append(pixel)
+def unpackImageArray_np(imageArray, width, height):
+    y_indices, x_indices = np.indices((height, width))
+    unpacked = [readImagePixel_INT(imageArray, x, y, width, height) for y, x in zip(y_indices.flatten(), x_indices.flatten())]
     return unpacked
+
 def process_completed_process(completed_process, sourceimage, targetimage, width_img, height_img):
     pixellist_data = completed_process
     #print first 20 lines
@@ -280,6 +308,7 @@ def process_completed_process(completed_process, sourceimage, targetimage, width
     
     average_pixels=[]
     
+    ''' 
     print (len(pixellist_data))
     for pixels in pixellist_data:
         if type(pixels) != list:
@@ -293,11 +322,17 @@ def process_completed_process(completed_process, sourceimage, targetimage, width
             average_pixels.append(pixelcolor)
     
     print ("result len: " + str(len(average_pixels)))
+    ''' 
     
-    
-    
-    if average_pixels == "":
-        return
+        
+        
+    # Convert the list to a NumPy array
+    pixellist_data_np = np.array(pixellist_data)
+
+    # Flatten the array and filter out non-float values
+    average_pixels = pixellist_data_np.ravel()[np.isreal(pixellist_data_np.ravel())]
+
+    print(f"Initial length: {len(pixellist_data)}, Result length: {len(average_pixels)}")
     
     writeImagePixels(targetimage, createImageFromPixels(average_pixels, int (width_img), int (height_img), sourceimage.name+"_"+targetimage.name).pixels)
     

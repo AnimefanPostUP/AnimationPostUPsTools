@@ -13,7 +13,7 @@ def process_lines(pixels, width, height):
     results = []
     sections = []
     
-    
+    print("Process Lines", file=sys.stderr)
     # Reshape the pixel data into a 2D array
     image = (np.array(pixels) * 255).reshape(height, width, 4).astype(np.uint8)
     
