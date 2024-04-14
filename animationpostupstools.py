@@ -8,6 +8,7 @@ import mathutils
 from mathutils import Vector
 from bpy.types import Menu
 from bpy.types import WorkSpaceTool
+from mathutils import Euler
 import numpy as np
 import os
 
@@ -440,9 +441,9 @@ class UVC_PT_extratools_2(uvc_extratoolpanel, bpy.types.Panel):
         layout.row().separator()
         box.label(text="Quickrotate:")   
         row=box.row()   
-        op=row.operator(UVC_Operator_rotate90DegL.bl_idname, text="Rotate L")
+        op=row.operator(UVC_Operator_rotate90DegL.bl_idname, text="Rotate L.")
         row=box.row()   
-        op=row.operator(UVC_Operator_rotate90DegR.bl_idname, text="Rotate R")
+        op=row.operator(UVC_Operator_rotate90DegR.bl_idname, text="Rotate R.")
         row=box.row()   
         
         #Create Operator to fix the rotation of the object by selected face normal
@@ -454,12 +455,32 @@ class UVC_PT_extratools_2(uvc_extratoolpanel, bpy.types.Panel):
         row=box.row()
         op=row.operator(UVC_Operator_fixRotation.bl_idname, text="X Axis")
         op.axis = 'X'
+        op.reset = False
         op=row.operator(UVC_Operator_fixRotation.bl_idname, text="Y Axis")
         op.axis = 'Y'
+        op.reset = False
         op=row.operator(UVC_Operator_fixRotation.bl_idname, text="Z Axis")
         op.axis = 'Z'
+        op.reset = False
         op=row.operator(UVC_Operator_fixRotation.bl_idname, text="All Axis")
         op.axis = 'A'
+        op.reset = False
+        
+        #Operator
+        row.label(text="Fix Rotation and Apply:")
+        row=box.row()
+        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="X Fix")
+        op.axis = 'X'
+        op.reset = True
+        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="Y Fix")
+        op.axis = 'Y'
+        op.reset = True   
+        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="Z Fix")
+        op.axis = 'Z'
+        op.reset = True
+        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="All Fix")
+        op.axis = 'A'
+        op.reset = True
 
 ####################################################################################################
 #04_menu_rotationtool_op.pymodule
@@ -486,11 +507,20 @@ class UVC_Operator_fixRotation(bpy.types.Operator):
         default='A'
     )
     
+    #boolean called "reset"
+    reset: bpy.props.BoolProperty(
+        name="Reset",
+        description="Reset the Rotation",
+        default=False
+    )
+    
     def execute(self, ctx):
         bpy.ops.ed.undo_push(message = "Attempt Fixing Rotation")
         fixRotation(self=self, ctx=ctx)
         return {'FINISHED'}
     
+    
+
 def fixRotation(self, ctx):
     #get selected object and make sure in edit mode
     obj = bpy.context.active_object
@@ -519,6 +549,23 @@ def fixRotation(self, ctx):
     
     # Switch back to object mode
     bpy.ops.object.mode_set(mode='OBJECT')
+    
+    #save the rotations before applying the rotation
+    oldrotation = obj.rotation_euler.copy()
+    
+    if self.reset:
+        if self.reset==True:
+            #apply the rotation
+            bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+            
+            #reapply the old rotation  inverted 
+            
+            #make the euler -x -y -z
+            newrotation = Euler((-oldrotation.x, -oldrotation.y, -oldrotation.z))
+            obj.rotation_euler = newrotation
+            
+        
+    
     
     
         
@@ -1128,10 +1175,16 @@ class UVC_PT_extratools_6(uvc_extratoolpanel, bpy.types.Panel):
         
         settingsdata = bpy.context.scene.ttb_settings_data
         
+        #create operator for UVC_Operator_createOptimizedUV
+        row.operator(UVC_Operator_createOptimizedUV.bl_idname, text="Optimize UVs", icon='UV')
+        
 
 ####################################################################################################
 #07_menu_uvopt_op.pymodule
 ####################################################################################################
+
+#import treathing
+import threading
 
 #Operator createOptimizedUV
 class UVC_Operator_createOptimizedUV(bpy.types.Operator):
@@ -1143,7 +1196,9 @@ class UVC_Operator_createOptimizedUV(bpy.types.Operator):
     
     def execute(self, context):
         bpy.ops.ed.undo_push(message="Create Optimized UV")
-        createOptimizedUV(self, context)
+        #background_thread = threading.Thread(target= createOptimizedUV, args=(self, context))
+        createOptimizedUV (self, context)
+        #background_thread.start()
         return {'FINISHED'}
 
 
@@ -1172,33 +1227,42 @@ def createOptimizedUV(self, context):
             if slot.material:
                 for node in slot.material.node_tree.nodes:
                     if node.type == "TEX_IMAGE":
-                        images.append(node.image)
+                        if (node.image):
+                            images.append(node.image)
                         
         #Create dicts for images, uvIslands and pixels parented to each other
         uvdict = {}
        
        
-        #convert pixels into 2 dimensional array make sure the array has the same pixel position as the uvs
-        pixels = []
-        # Get the size of one dimension (assuming the image is a square)
-        size = int(np.sqrt(len(image.pixels)))
 
-        # Convert pixels into 2 dimensional array
-        pixels = np.array(image.pixels).reshape(size, size)
-                    
-                        
                         
         # Iterate all islands
         for i, uv in enumerate(uvIslands):
             imageDict = {}
             # Iterate all images
             for image in images:
-                uvIslandDict = {}
+                uvIslandDict = {
+                    'image': image,
+                    'pixels': {}             
+                    
+                }
                 #iterate faces of the island
+                
+                
+                #convert pixels into 2 dimensional array make sure the array has the same pixel position as the uvs
+                pixels = []
+                # Get the actual dimensions of the image
+                height, width = image.size
+
+                # Convert pixels into 3 dimensional array (height, width, RGBA)
+                pixels = np.array(image.pixels).reshape(width, height, 4)
+                
+                size= height * width
+                                                
              
                 #iterate x and y of the pixels
-                for x in range(size):
-                    for y in range(size):
+                for x in range(width):
+                    for y in range(height):
                         pixelDict = {
                             'top': 0,
                             'bottom': 0,
@@ -1209,27 +1273,48 @@ def createOptimizedUV(self, context):
                             'average': 0,
                             
                             #3D vector
-                            'orientation': (0, 0),
+                            'orientation': {
+                                'x': 0,
+                                'y': 0
+                            },
                             'straigthness': 0
                             
                         }
-                        pixel = pixels[x][y]
+                        pixel = int (pixels[x][y][0] + pixels[x][y][1] + pixels[x][y][2]) / 3
+                        
+                        
                        
-                        #add the difference to the top , bottom , left and right pixel to a variable      
-                        top =  pixel - pixels[x][y+1] 
-                        bottom =  pixel - pixels[x][y-1]
-                        left =  pixel - pixels[x-1][y]
-                        right =  pixel - pixels[x+1][y]
+                        #add the difference to the top , bottom , left and right pixel to a variable   
+                        if y+1 < height:
+                            top =  pixel -  getpixelgrayscaled(getpixelfromArray(pixels, x, y+1))
+                        else:
+                            top = pixel  # or some other default value
+                            
+                        
+                        if y-1 >= 0:
+                            bottom =  pixel - getpixelgrayscaled(getpixelfromArray(pixels, x, y-1))
+                        else:
+                            bottom = pixel  # or some other default value
+                            
+                        if x-1 >= 0:
+                            left =  pixel - getpixelgrayscaled(getpixelfromArray(pixels, x-1, y))
+                        else:
+                            left = pixel  # or some other default value
+                            
+                        if x+1 < width:
+                            right =  pixel - getpixelgrayscaled(getpixelfromArray(pixels, x+1, y))
+                        else:
+                            right = pixel  # or some other default value
+                            
                                    
                         difference = top + bottom + left + right
                         difference = difference / 4
                         
-                        #calculate a 2d vector into the direction with the highest difference uusing math
+
                         orientation = (top - bottom, left - right)
-                        #normalize
-                        orientation = orientation / np.linalg.norm(orientation)
-                        
-                        straigthness = abs(pixel['orientation'][0] - 0.5) + abs(pixel['orientation'][1] - 0.5)
+                        norm = np.linalg.norm(orientation)
+                        orientation = (orientation[0] / norm, orientation[1] / norm)
+                        straigthness =  abs(0.5 - (abs(top) + abs(bottom) + abs(left) + abs(right)) / 4)
                         
                         #add the differences to the pixelDict
                         pixelDict['top'] = top
@@ -1241,14 +1326,13 @@ def createOptimizedUV(self, context):
                         pixelDict['average'] = difference
                         
                         #add the orientation to the pixelDict
-                        pixelDict['orientation'] = orientation
+                        pixelDict ['orientation'].update( {'x': orientation[0] })
+                        pixelDict['orientation'].update( {'y': orientation[1] })
                         
                         # Add the straigthness to the pixelDict
                         pixelDict['straigthness'] = straigthness
                                            
-                        pixelDict['p'+ str(x) +"/"+ str(y)] = pixelDict
-                        # Add the pixelDict to the uvIslandDict
-                        uvIslandDict['pixel'] = pixelDict
+                        uvIslandDict['pixels']['p'+ str(x) +"/"+ str(y)] = pixelDict.copy()
                         
                         
                         
@@ -1258,21 +1342,49 @@ def createOptimizedUV(self, context):
                     mindifference=0
                     maxdifference=0
                     
-                    for pixel in uvIslandDict['pixel']:
-                        averageOrientation += pixel['orientation']
+                    for pixdata in uvIslandDict['pixels'].values():
+                        orientationdict = pixdata['orientation']
+                        
+                        orientationx = orientationdict['x']
+                        orientationy = orientationdict['y']
+                                        
+                        #add the orientation to the average orientation
+                        averageOrientation = (averageOrientation[0] + orientationx, averageOrientation[1] + orientationy)
                         
                         #calculate how much the vectors are straight to left or right or top or bottom
                         #substract them to get how much the vectors are, the closer to 0.5 the less straight they are
                         
+                # Add the imageDict to the uvdict using update
+                uvdict.update(imageDict)
+                
+                #Create image from uvdict
+                # Create a new image
+                new_image = bpy.data.images.new("Optimized", width=size, height=size)
+                # Create a new pixels array
+                new_pixels = []
+                
+                # Iterate all pixels
+                for x in range(size):
+                    for y in range(size):
+                        # Get the pixel from the uvdict
+                        key = 'p'+ str(x) +"/"+ str(y)
+                        if key in uvdict:
+                            pixeldata = uvdict[key]
+                            new_pixels.append(pixeldata['average'])
+                        else:
+                            new_pixels.append(255)
                         
                         
                         
+                        
+def getpixelgrayscaled(pixel):
+    return int (pixel[0] + pixel[1] + pixel[2]) / 3
+
+def getpixelfromArray(array, x, y):
+    return array[x][y]
+                        
+
                     
-                    # Add the uvIslandDict to the imageDict
-                imageDict['uvIslandDict'] = uvIslandDict
-            # Add the imageDict to the uvdict using update
-            uvdict.update(imageDict)
-                   
 
                     
 #MODULE_EARLY_INSTALLERSPACE_START_00000000
@@ -1384,1196 +1496,6 @@ sideloadtester()
 
 
 '''
-
-#Generic Tools:
-class uvc_extratoolpanel():
-    """ %PANEL%
-    Drawing the Colors and eventually Displayoption Buttons in Future
-    """
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = "AnimfanPostUP"
-    bl_options = {"DEFAULT_CLOSED"}
- 
-#Core Menu    
-class extratool_PT_panel(uvc_extratoolpanel, bpy.types.Panel):
-    """ %PANEL%
-    Drawing the Colors and eventually Displayoption Buttons in Future
-    """
-    bl_idname = "anifanpostuptools_PT_extratools"
-    bl_label = "Extra Tools"
-     
-    def draw(self, ctx):
-        layout = self.layout
-
-#Pivotsetter
-class UVC_PT_extratools_1(uvc_extratoolpanel, bpy.types.Panel):
-    bl_label = "Pivot Setter"
-    bl_parent_id = "anifanpostuptools_PT_extratools"
-    
-    
-    def draw(self, context):
-        layout = self.layout
-        scene = context.scene
-        
-        settingsdata=bpy.context.scene.ttb_settings_data
-
-        box = layout.box() #NEW BOX
-        box.label(text="Set Pivot")     
-        row=box.row()   
-        box.label(text="Top/Bottom are Z Axies")  
-        row=box.row()   
-        box.label(text="in Z/Z- mode its the Y Axies")  
-        
-        row.prop(settingsdata, "direction", expand=True) 
-        row=box.row()    
-        row.prop(settingsdata, "transformspace", expand=True) 
-        row=box.row()    
-        
-        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="RADIOBUT_ON")
-        op.height="tl"
-        op.direction=settingsdata.direction
-        op.transformspace=settingsdata.transformspace
-        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="TRIA_UP")
-        op.height="tm"
-        op.direction=settingsdata.direction
-        op.transformspace=settingsdata.transformspace
-        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="RADIOBUT_ON")
-        op.height="tr"
-        op.direction=settingsdata.direction
-        op.transformspace=settingsdata.transformspace
-        row=box.row()    
-        
-        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="TRIA_LEFT")
-        op.height="ml"
-        op.direction=settingsdata.direction
-        op.transformspace=settingsdata.transformspace
-        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="RADIOBUT_ON")
-        op.height="mm"
-        op.direction=settingsdata.direction
-        op.transformspace=settingsdata.transformspace
-        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="TRIA_RIGHT")
-        op.height="mr"
-        op.direction=settingsdata.direction
-        op.transformspace=settingsdata.transformspace
-        row=box.row()    
-        
-        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="RADIOBUT_ON")
-        op.height="bl"
-        op.direction=settingsdata.direction
-        op.transformspace=settingsdata.transformspace
-        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="TRIA_DOWN")
-        op.height="bm"
-        op.direction=settingsdata.direction
-        op.transformspace=settingsdata.transformspace
-        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="", icon="RADIOBUT_ON")
-        op.height="br"
-        op.direction=settingsdata.direction
-        op.transformspace=settingsdata.transformspace
-        row=box.row()    
-        
-        op=row.operator(UVC_Operator_setOrigin.bl_idname, text="Average")
-        op.height="ct"
-        op.direction=settingsdata.direction
-        op.direction=settingsdata.direction
-        row=box.row()    
-  
-#Rotationrool        
-class UVC_PT_extratools_2(uvc_extratoolpanel, bpy.types.Panel):
-    bl_label = "Rotationtool"
-    bl_parent_id = "anifanpostuptools_PT_extratools"
-    
-    
-    def draw(self, context):
-        layout = self.layout
-
-        box = layout.box() #NEW BOX
-        box.label(text="Rotationclip:")   
-        row=box.row()   
-        op=row.operator(UVC_Operator_clipRotation.bl_idname, text="Clip by 15°")
-        row=box.row()   
-        
-        layout.row().separator()
-        box.label(text="Quickrotate:")   
-        row=box.row()   
-        op=row.operator(UVC_Operator_rotate90DegL.bl_idname, text="Rotate L")
-        row=box.row()   
-        op=row.operator(UVC_Operator_rotate90DegR.bl_idname, text="Rotate R")
-        row=box.row()   
-        
-        #Create Operator to fix the rotation of the object by selected face normal
-        #create one operator that allows to fix x,y,z, or all axis
-        
-        #Operator
-        row=box.row()
-        row.label(text="Fix Rotation by Face Normal:")
-        row=box.row()
-        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="X Axis")
-        op.axis = 'X'
-        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="Y Axis")
-        op.axis = 'Y'
-        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="Z Axis")
-        op.axis = 'Z'
-        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="All Axis")
-        op.axis = 'A'
-
-#Operator
-class UVC_Operator_fixRotation(bpy.types.Operator):
-    """ OPERATOR
-    Adds a Panel
-    """
-    bl_idname = "anifanpostuptools.fixrotation"
-    bl_label = "Fix Rotation"
-    
-    #create enums
-    axis: bpy.props.EnumProperty(
-        items=[
-            ('X', "X Axis", ""),
-            ('Y', "Y Axis", ""),
-            ('Z', "Z Axis", ""),
-            ('A', "All Axis", ""),
-        ],
-        name="Axis",
-        description="Select the Axis to fix",
-        default='A'
-    )
-    
-    def execute(self, ctx):
-        bpy.ops.ed.undo_push(message = "Attempt Fixing Rotation")
-        fixRotation(self=self, ctx=ctx)
-        return {'FINISHED'}
-    
-def fixRotation(self, ctx):
-    #get selected object and make sure in edit mode
-    obj = bpy.context.active_object
-    bpy.ops.object.mode_set(mode='EDIT')
-    
-    #get the selected using bmesh
-    bm = bmesh.from_edit_mesh(obj.data)
-    selected = [f for f in bm.faces if f.select]
-    
-    #rotate the object by the selected face normal so the normal is in the direction of the axis of the world
-    for face in selected:
-        normal = face.normal
-        if self.axis == 'X':
-            target = Vector((1, 0, 0))
-        elif self.axis == 'Y':
-            target = Vector((0, 1, 0))
-        elif self.axis == 'Z':
-            target = Vector((0, 0, 1))
-        elif self.axis == 'A':
-            target = Vector((1, 1, 1))
-        
-        rotation = normal.rotation_difference(target)
-        
-        # Apply the rotation to the entire object
-        obj.rotation_euler = rotation.to_euler()
-    
-    # Switch back to object mode
-    bpy.ops.object.mode_set(mode='OBJECT')
-        
-        
-    
-#Autosmooth        
-class UVC_PT_extratools_3(uvc_extratoolpanel, bpy.types.Panel):
-    bl_label = "Autosmooth"
-    bl_parent_id = "anifanpostuptools_PT_extratools"
-    
-    
-    def draw(self, context):
-        layout = self.layout
-        box = layout.box() #NEW BOX
-        row=box.row()
-        
-        settingsdata = bpy.context.scene.ttb_settings_data
-        
-        row.prop(settingsdata, "autosmooth", expand=True, text="Autosmooth")  
-        row.prop(settingsdata, "cleanSplitNormals", expand=True, text="Set Clear")
-
-        row.prop(settingsdata, "extendsplitnormalmenu", expand=True, text="Expand")
-        
-        
-        box.label(text="Split Normals by Degree:")   
-
-        #===
-        row=box.row()   
-        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="5").angle=5
-        if(settingsdata.extendsplitnormalmenu):
-            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="8").angle=7
-
-        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="10").angle=10
-        if(settingsdata.extendsplitnormalmenu):
-            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="13").angle=13
-        
-        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="15").angle=15
-        if(settingsdata.extendsplitnormalmenu):
-            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="15").angle=18
-       
-        #===
-        row=box.row() 
-        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="20").angle=20
-        if(settingsdata.extendsplitnormalmenu):
-            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="23").angle=23
-
-        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="25").angle=25
-        if(settingsdata.extendsplitnormalmenu):
-            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="28").angle=28
-
-        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="30").angle=30
-        if(settingsdata.extendsplitnormalmenu):
-            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="33").angle=33
-        
-        #===
-        row=box.row()  
-        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="35").angle=35
-        if(settingsdata.extendsplitnormalmenu):
-            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="38").angle=38
-
-        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="40").angle=40
-        if(settingsdata.extendsplitnormalmenu):
-            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="43").angle=43
-
-        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="45").angle=45
-        if(settingsdata.extendsplitnormalmenu):
-            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="48").angle=48
-
-        #===
-        row=box.row()  
-        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="50").angle=50
-        if(settingsdata.extendsplitnormalmenu):
-            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="53").angle=53
-
-        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="55").angle=55
-        if(settingsdata.extendsplitnormalmenu):
-            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="58").angle=58
-
-        op=row.operator(UVC_Operator_splitnormals.bl_idname, text="60").angle=60
-
-
-
-
-        if(settingsdata.extendsplitnormalmenu):
-            #===
-            row=box.row()  
-            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="65").angle=65
-            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="70").angle=70
-            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="75").angle=75
-            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="80").angle=80
-            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="85").angle=85
-
-            row=box.row()  
-            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="90").angle=90
-            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="95").angle=95
-            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="100").angle=100
-            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="105").angle=105
-            op=row.operator(UVC_Operator_splitnormals.bl_idname, text="110").angle=110
-
-        
-        row = box.row()
-        row.label(text="Clean Sharps/Splits/Shade:")  
-        op=row.operator(UVC_Operator_cleanupsharps.bl_idname, text="Clean")
-
-        row = box.row()
-        row.label(text="Active(!) Smoothing Angle:")  
-        row.prop(settingsdata, "splitangle", text="" , slider=True)
-
-class UVC_PT_extratools_4(uvc_extratoolpanel, bpy.types.Panel):
-    bl_label = "Vertex Groups"
-    bl_parent_id = "anifanpostuptools_PT_extratools"
-    
-    
-    def draw(self, context):
-        layout = self.layout
-        box = layout.box() #NEW BOX
-        row=box.row()
-        
-        settingsdata = bpy.context.scene.ttb_settings_data
-        
-        box.label(text="Select shared Vertexgroup:")   
-        row=box.row()   
-        op=row.operator(UVC_Operator_selectByGroup.bl_idname, text="Select SimilarGroup")
-
-class UVC_PT_extratools_5(uvc_extratoolpanel, bpy.types.Panel):
-    bl_label = "Renamer"
-    bl_parent_id = "anifanpostuptools_PT_extratools"
-    
-    
-    def draw(self, context):
-        layout = self.layout
-        box = layout.box() #NEW BOX
-        row=box.row()
-
-        Tooldata_Renamer= get_current_tooldata_renamer(context) #Get Tooldata
-
-
-
-        #Prop Prefix
-        row=box.row()
-        row.prop (Tooldata_Renamer, "Prefix", text="Prefix")
-        row=box.row()
-        row.label(text="_")
-        row=box.row()
-        row.prop (Tooldata_Renamer, "Suffix", text="Suffix")
-
-
-
-
-        box = layout.box() #NEW BOX
-        row=box.row()
-        row.label(text="Size:", icon="CON_SIZELIMIT")
-
-        row=box.row()
-        subsuffix="none"
-        op=row.operator(UVC_Operator_rename.bl_idname, text="None")
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=""
-
-        subsuffix="Small"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-        
-        subsuffix="Medium"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        subsuffix="Large"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        box = layout.box() #NEW BOX
-
-        row=box.row()
-        row.label(text="Color:", icon="COLOR")
-
-        row=box.row()
-        subsuffix="Gray"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        subsuffix="White"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        subsuffix="Black"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        row=box.row()
-        subsuffix="Red"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        subsuffix="Green"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        subsuffix="Blue"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        
-        row=box.row()
-        subsuffix="Yellow"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        subsuffix="Orange"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        subsuffix="Orange"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        subsuffix="Purple"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        box = layout.box() #NEW BOX
-
-        row=box.row()
-        row.label(text="Class (Main):", icon="PMARKER_ACT")
-
-        row=box.row()
-        
-        subsuffix="Base"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        subsuffix="Raw"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-                
-        subsuffix="Main"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        box = layout.box() #NEW BOX
-
-        row=box.row()
-        row.label(text="Class (Sub):", icon="KEYFRAME_HLT")
-
-        row=box.row()
-
-        subsuffix="Extra"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        subsuffix="Sub"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-                
-        subsuffix="Alt"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        box = layout.box() #NEW BOX
-
-        row=box.row()
-        row.label(text="Direction (Sky):", icon="OBJECT_ORIGIN")
-
-        row=box.row()
-
-        subsuffix="North"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        subsuffix="South"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-                
-        subsuffix="East"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        subsuffix="West"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        box = layout.box() #NEW BOX
-
-        row=box.row()
-        row.label(text="Direction (Relative):", icon="ORIENTATION_LOCAL")
-
-        row=box.row()
-
-        subsuffix="Top"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        subsuffix="Bottom"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-                
-        subsuffix="Left"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        subsuffix="Right"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix       
-
-        box = layout.box() #NEW BOX
-
-        row=box.row()
-        row.label(text="Timestamp:", icon="TIME")
-
-        row=box.row()
-
-        subsuffix="Pre"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        subsuffix="Current"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-                
-        subsuffix="After"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        subsuffix="Later"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix  
-
-        box = layout.box() #NEW BOX
-
-        row=box.row()
-        row.label(text="Marks:", icon="BOOKMARKS")
-
-        row=box.row()
-
-        subsuffix="New"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        subsuffix="Temp"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-                
-        subsuffix="Placeholder"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        subsuffix="Test"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix  
-
-    
-        box = layout.box() #NEW BOX
-
-        row=box.row()
-        row.label(text="Part:", icon="TRACKER")
-
-        row=box.row()
-
-        subsuffix="Beginn"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        subsuffix="Middle"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-                
-        subsuffix="End"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-            
-        box = layout.box() #NEW BOX
-
-        row=box.row()
-        row.label(text="State:", icon="PIVOT_BOUNDBOX")
-
-        row=box.row()
-
-        subsuffix="Open"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        subsuffix="Closed"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-                
-        subsuffix="Exposed"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        box = layout.box() #NEW BOX
-
-        row=box.row()
-        row.label(text="Quality:", icon="META_DATA")
-
-        row=box.row()
-
-        subsuffix="Broken"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-        subsuffix="Damaged"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-                
-        subsuffix="Intact"
-        op=row.operator(UVC_Operator_rename.bl_idname, text=subsuffix)
-        op.PreFix=Tooldata_Renamer.Prefix
-        op.Suffix=Tooldata_Renamer.Suffix
-        op.Suffix_Sub=subsuffix
-
-#create another panel
-class UVC_PT_extratools_6(uvc_extratoolpanel, bpy.types.Panel):
-    bl_label = "UV Optimizer"
-    bl_parent_id = "anifanpostuptools_PT_extratools"
-    
-    
-    def draw(self, context):
-        layout = self.layout
-        box = layout.box() #NEW BOX
-        row=box.row()
-        
-        settingsdata = bpy.context.scene.ttb_settings_data
-        
-       
-#Operator createOptimizedUV
-class UVC_Operator_createOptimizedUV(bpy.types.Operator):
-    """ OPERATOR
-    Adds a Panel
-    """
-    bl_idname = "anifanpostuptools.createoptimizeduv"
-    bl_label = "Create Optimized UV"
-    
-    def execute(self, context):
-        bpy.ops.ed.undo_push(message="Create Optimized UV")
-        createOptimizedUV(self, context)
-        return {'FINISHED'}
-
-
-def createOptimizedUV(self, context):
-    # Get active Objects
-    selected_Objects = bpy.context.selected_objects
-
-    # Select the objects you want to rename
-    selected_objects = bpy.context.selected_objects
-    for obj in selected_objects:
-        #cache the old uv in a list of Islands
-        uvIslands = []
-        for uv in obj.data.uv_layers.active.data:
-            uvIslands.append(uv.uv)
-            
-        #add new uv called "Optimized" if not exists
-        if not "Optimized" in obj.data.uv_layers:
-            obj.data.uv_layers.new(name="Optimized")
-            
-        #set the new uv to active
-        obj.data.uv_layers.active = obj.data.uv_layers["Optimized"]
-        
-        #get all images that are used in the materials of the object
-        images = []
-        for slot in obj.material_slots:
-            if slot.material:
-                for node in slot.material.node_tree.nodes:
-                    if node.type == "TEX_IMAGE":
-                        images.append(node.image)
-                        
-        #Create dicts for images, uvIslands and pixels parented to each other
-        uvdict = {}
-       
-       
-        #convert pixels into 2 dimensional array make sure the array has the same pixel position as the uvs
-        pixels = []
-        # Get the size of one dimension (assuming the image is a square)
-        size = int(np.sqrt(len(image.pixels)))
-
-        # Convert pixels into 2 dimensional array
-        pixels = np.array(image.pixels).reshape(size, size)
-                    
-                        
-                        
-        # Iterate all islands
-        for i, uv in enumerate(uvIslands):
-            imageDict = {}
-            # Iterate all images
-            for image in images:
-                uvIslandDict = {}
-                #iterate faces of the island
-             
-                #iterate x and y of the pixels
-                for x in range(size):
-                    for y in range(size):
-                        pixelDict = {
-                            'top': 0,
-                            'bottom': 0,
-                            'left': 0,
-                            'right': 0,
-                            
-                            #average difference of the top, bottom, left and right pixel
-                            'average': 0,
-                            
-                            #3D vector
-                            'orientation': (0, 0),
-                            'straigthness': 0
-                            
-                        }
-                        pixel = pixels[x][y]
-                       
-                        #add the difference to the top , bottom , left and right pixel to a variable      
-                        top =  pixel - pixels[x][y+1] 
-                        bottom =  pixel - pixels[x][y-1]
-                        left =  pixel - pixels[x-1][y]
-                        right =  pixel - pixels[x+1][y]
-                                   
-                        difference = top + bottom + left + right
-                        difference = difference / 4
-                        
-                        #calculate a 2d vector into the direction with the highest difference uusing math
-                        orientation = (top - bottom, left - right)
-                        #normalize
-                        orientation = orientation / np.linalg.norm(orientation)
-                        
-                        straigthness = abs(pixel['orientation'][0] - 0.5) + abs(pixel['orientation'][1] - 0.5)
-                        
-                        #add the differences to the pixelDict
-                        pixelDict['top'] = top
-                        pixelDict['bottom'] = bottom
-                        pixelDict['left'] = left
-                        pixelDict['right'] = right
-                        
-                        #add the average difference to the pixelDict
-                        pixelDict['average'] = difference
-                        
-                        #add the orientation to the pixelDict
-                        pixelDict['orientation'] = orientation
-                        
-                        # Add the straigthness to the pixelDict
-                        pixelDict['straigthness'] = straigthness
-                                           
-                        pixelDict['p'+ str(x) +"/"+ str(y)] = pixelDict
-                        # Add the pixelDict to the uvIslandDict
-                        uvIslandDict['pixel'] = pixelDict
-                        
-                        
-                        
-                    #cacululate the average orientation of all pixels 
-                    averageOrientation = (0, 0)
-                    straigthness=0
-                    mindifference=0
-                    maxdifference=0
-                    
-                    for pixel in uvIslandDict['pixel']:
-                        averageOrientation += pixel['orientation']
-                        
-                        #calculate how much the vectors are straight to left or right or top or bottom
-                        #substract them to get how much the vectors are, the closer to 0.5 the less straight they are
-                        
-                        
-                        
-                        
-                    
-                    # Add the uvIslandDict to the imageDict
-                imageDict['uvIslandDict'] = uvIslandDict
-            # Add the imageDict to the uvdict using update
-            uvdict.update(imageDict)
-                   
-
-                    
-                        
-                
-                        
-                        
-
-# operator UVC_Operator_selectByGroup
-class UVC_Operator_selectByGroup(bpy.types.Operator):
-    """ OPERATOR
-    Adds a Panel
-    """
-    bl_idname = "anifanpostuptools.selectbygroup"
-    bl_label = "Select Similar Group"
-    
-    def execute(self, ctx):
-        bpy.ops.ed.undo_push(message = "Attempt Selecting by Group")
-        selectByGroup(self, ctx)
-        return {'FINISHED'}
-    
-class UVC_Operator_selectByGroupTool(bpy.types.Operator):
-    """ OPERATOR
-    Adds a Panel
-    """
-    bl_idname = "anifanpostuptools.selectbygrouptool"
-    bl_label = "Select Similar Group"
-    
-    def invoke(self, context, event):
-        bpy.ops.ed.undo_push(message="Select By Group")
-        # Perform the default selection operation
-        bpy.ops.view3d.select(location=(event.mouse_region_x, event.mouse_region_y))
-
-        # Then execute your custom operation
-        selectByGroup(self, context)
-
-        return {'FINISHED'}
-    
-class UVC_Operator_rename(bpy.types.Operator):
-    """ OPERATOR
-    Adds a Panel
-    """
-    bl_idname = "anifanpostuptools.rename"
-    bl_label = "Rename"
-
-    PreFix: bpy.props.StringProperty(name="Prefix", default="")
-    Suffix: bpy.props.StringProperty(name="Suffix", default="") 
-    Suffix_Sub: bpy.props.StringProperty(name="Suffix Sub", default="")
-    
-    def execute(self, context):
-        bpy.ops.ed.undo_push(message="Rename")
-        rename (self=self, context=context)
-        return {'FINISHED'}
-    
-def rename(self, context):
-    # Get active Objects
-    selected_Objects = bpy.context.selected_objects
-
-    # Get Prefix and Suffix from Operator
-    prefix = self.PreFix
-    suffix = self.Suffix
-    suffix_Sub = self.Suffix_Sub
-
-    prefixIsSet = False
-    suffixIsSet = False
-    suffix_SubIsSet = False
-
-    if not prefix == "":
-        prefixIsSet = True
-
-    if not suffix == "":
-        suffixIsSet = True
-
-    if not suffix_Sub == "":
-        suffix_SubIsSet = True
-
-    # Select the objects you want to rename
-    selected_objects = bpy.context.selected_objects
-    for obj in selected_objects:
-        new_name = prefix if prefixIsSet else ""
-        if suffixIsSet:
-            new_name += f"_{suffix}" if prefixIsSet else suffix
-        if suffix_SubIsSet:
-            new_name += f"_{suffix_Sub}" if new_name else suffix_Sub
-        obj.name = new_name
-        
-        
-
-class UVC_Operator_transformByGroupTool(bpy.types.Operator):
-    """ OPERATOR
-    Adds a Panel
-    """
-    bl_idname = "anifanpostuptools.transformbygrouptool"
-    bl_label = "Transform Similar Group"
-    
-    def invoke(self, context, event):
-        print("activated Transformtool")
-        # Get the active mesh
-        obj = context.active_object
-        me = obj.data
-        bm = bmesh.from_edit_mesh(me)
-        bpy.ops.ed.undo_push(message="Select By Group Transform")
-        # Initialize a list to store selected faces
-        selected_faces = []
-
-        # Iterate through faces to find selected ones
-        active_face = None
-        
-        for face in bm.faces:
-            for element in reversed(bm.select_history):
-                if isinstance(element, bmesh.types.BMFace):
-                    face = element
-                    break
-
-            if face is None: 
-                return (None)
-            if face.select and active_face is None:
-                active_face=face
-    
-    
-
-        if active_face is None: 
-            print("canceled")
-            return {'CANCELLED'}
-
-        
-
-        # Find the most facing axis of the active face
-        most_facing_axis = find_most_facing_axis(active_face.normal)
-        
-        print (most_facing_axis)
-
-        currentOrientationMode = bpy.context.scene.transform_orientation_slots[0].type
-        #Set mode to local
-        bpy.context.scene.transform_orientation_slots[0].type = 'LOCAL'
-        
-        # Set the constraint axis for the transform operator
-        constraint_axis = (abs(most_facing_axis.x) == 1.0, abs(most_facing_axis.y) == 1.0, abs(most_facing_axis.z) == 1.0)
-        
-        # Call the transform.translate operator with the constraint axis
-        bpy.ops.transform.translate('INVOKE_DEFAULT', constraint_axis=constraint_axis)
-        
-        #revert to old mode
-        bpy.context.scene.transform_orientation_slots[0].type = currentOrientationMode
-
-        return {'RUNNING_MODAL'}
-    
-class AutoGroupSelector(WorkSpaceTool):
-    bl_space_type = 'VIEW_3D'
-    bl_context_mode = 'EDIT_MESH'
-
-    bl_idname = "anifanpostuptools.auto_group_selector"
-    bl_label = "Auto Group Selector"
-    bl_description = (
-        "This is a tooltip\n"
-        "with multiple lines"
-    )
-    bl_icon = "ops.generic.select"
-    bl_widget = None
-    bl_operator = UVC_Operator_selectByGroupTool.bl_idname
-    
-    bl_keymap = (
-        ("anifanpostuptools.selectbygrouptool", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
-        ("anifanpostuptools.selectbygrouptool", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
-        ("anifanpostuptools.transformbygrouptool", {"type":"G", "value": 'PRESS'}, None),
-    )
-
-    # def draw_settings(context, layout, tool):
-    #     #props = tool.operator_properties("view3d.select_lasso")
-    #     #layout.prop(props, "mode")
-    def draw_settings(context, layout, tool):
-        pass
-
-
-class AutoGroupSelectorObject(WorkSpaceTool):
-    bl_space_type = 'VIEW_3D'
-    bl_context_mode = 'OBJECT'
-
-    bl_idname = "anifanpostuptools.auto_group_selector_object"
-    bl_label = "Auto Group Selector"
-    bl_description = (
-        "This is a tooltip\n"
-        "with multiple lines"
-    )
-    bl_icon = "ops.generic.select"
-    bl_widget = None
-    bl_operator = "view3d.select"
-    
-    bl_keymap = (
-        ("view3d.select", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
-        ("view3d.select", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG'}, None),
-    )
-
-    def draw_settings(context, layout, tool):
-        pass
-    
-class UVC_Operator_setOrigin(bpy.types.Operator):
-
-    """ OPERATOR
-    Adds a Panel
-    """
-
-
-    bl_idname = "uvc.setorigin"
-    bl_label = "sets the Origin of all Selected Objects"
-    
-    
-    
-    height: bpy.props.EnumProperty(
-        items=[
-            ('tl', 'Top Left', 'ltl', '', 1),
-            ('tm', 'Top Mid', 'tm', '', 2),    
-            ('tr', 'Top Right', 'tr', '', 3),
-            ('ml', 'Mid Left', 'ml', '', 4),
-            ('mm', 'Mid ', '', 'mm', 5),    
-            ('mr', 'Mid Right', 'mr', '', 6),
-            ('bl', 'Bottom Left', 'bl', '', 7),
-            ('bm', 'Bottom Mid', 'bm', '', 8),    
-            ('br', 'Bottom Right', 'br', '', 9),
-            ('ct', 'Center', 'cr', '', 10),
-        ],
-        name="Pivot Placement",
-        description="If the Pivot should be placed on a Edge, Corner or Face",
-        default='mm'
-    )
-    
-
-    direction: bpy.props.EnumProperty(
-        items=[
-            ('x', 'X', 'X', '', 1),
-            ('xn', 'X-', 'X-', '', 2),    
-            ('y', 'Y', 'Y', '', 3),
-            ('yn', 'Y-', 'Y-', '', 4),    
-            ('z', 'Z', 'Z', '', 5),
-            ('zn', 'Z-', 'Z-', '', 6),    
-        ],
-        name="Which Direction",
-        description="Which Direction to set the Pivot",
-        default='zn'
-    )
-    
-    transformspace: bpy.props.EnumProperty(
-        items=[
-            ('objectspace', 'Object', 'Direction by Objectspace', '', 1),
-            ('worldspace', 'World', 'Direction by Worldspace', '', 2),    
-            ('auto', 'Auto', 'Will Clip the Objectrotation by the most fitting Worldspace direction', '', 3),
-        ],
-        name="Which Direction",
-        description="Which Direction to set the Pivot",
-        default='objectspace'
-    )
-    
-    def execute(self, ctx):
-        bpy.ops.ed.undo_push(message = "Attempt Setting Origin of Selection")
-        setPivot(self=self, context=ctx)
-        
-        return {'FINISHED'}
-    
-class UVC_Operator_splitnormals(bpy.types.Operator):    
-    """ OPERATOR Adds a Panel"""
-
-
-    bl_idname = "wm.uvc_splitnormals"
-    bl_label = "Splits the Normals of all selected Objects"
-    #create integer
-    angle : bpy.props.IntProperty(name="Angle", default=30, min=-360, max=360)
-
-    def execute(self, ctx):
-        bpy.ops.ed.undo_push(message = "Attempt Smoothing")
-        splitNormals(self=self, context=ctx)
-        return {'FINISHED'}
-    
-class UVC_Operator_cleanupsharps(bpy.types.Operator):    
-    """ OPERATOR Adds a Panel"""
-
-
-    bl_idname = "wm.uvc_cleanupsharps"
-    bl_label = "Cleans, Sharps, Splits and Shading"
-
-    def execute(self, ctx):
-        bpy.ops.ed.undo_push(message = "Attempt Cleanup Sharps")
-        cleanupSharpsAndSplits(self=self, context=ctx)
-        return {'FINISHED'}
-    
-    
-class UVC_Operator_rotate90DegL(bpy.types.Operator):    
-    """ OPERATOR Adds a Panel"""
-
-
-    bl_idname = "wm.uvc_rotate90degl"
-    bl_label = "Rotates 90 degrees"
-    
-
-    
-    
-    def execute(self, ctx):
-        bpy.ops.ed.undo_push(message = "Attempt Rotating")
-        rotate90DegL(self=self, context=ctx)
-        
-        return {'FINISHED'}
-  
-class UVC_Operator_rotate90DegR(bpy.types.Operator):    
-    """ OPERATOR Adds a Panel"""
-
-
-    bl_idname = "wm.uvc_rotate90degr"
-    bl_label = "Rotates 90 degrees"
-    
-
-    
-    
-    def execute(self, ctx):
-        bpy.ops.ed.undo_push(message = "Attempt Rotating")
-        rotate90DegR(self=self, context=ctx)
-        return {'FINISHED'}
-
-class UVC_Operator_clipRotation(bpy.types.Operator):    
-    """ OPERATOR Adds a Panel"""
-
-
-    bl_idname = "wm.uvc_cliprotation"
-    bl_label = "Clips the Rotation to 15 Degrees into the shortest direction"
-    
-
-    
-    
-    def execute(self, ctx):
-        bpy.ops.ed.undo_push(message = "Attempt Clipping Rotation")
-        clipRotation(self=self, context=ctx)
-        
-        return {'FINISHED'}
-    
-
-
-class UVC_Operator_rerouteSnapping(bpy.types.Operator):    
-    """ OPERATOR Adds a Panel"""
-
-
-    bl_idname = "wm.uvc_splitnormals"
-    bl_label = "Splits the Normals of all selected Objects"
-    #create integer
-    angle : bpy.props.IntProperty(name="Angle", default=30, min=-360, max=360)
-
-    def execute(self, ctx):
-        bpy.ops.ed.undo_push(message = "Attempt Smoothing")
-        splitNormals(self=self, context=ctx)
-        return {'FINISHED'}
-
-class EmptyOperator(bpy.types.Operator):
-    bl_idname = "my.empty_operator"
-    bl_label = "Empty Operator"
-
-    def execute(self, context):
-        return {'FINISHED'}
 
 
 #Generic Tools Data:
@@ -3192,13 +2114,6 @@ class Bonery_OT_keyparent(bpy.types.Operator):
         key_newBone(context)
         return {'FINISHED'}
     
-class Bonery_OT_keyloose(bpy.types.Operator):
-    """Operator for Bonery addon"""
-    bl_idname =  "bonery.keyloose"
-    bl_label = "Key"
-
-    def execute(self, context):      
-        key_object_loose(context)
 
 ####################################################################################################
 #18_operators_debug.pymodule
@@ -4785,7 +3700,14 @@ def apply_transformation_to_bone(obj, bone, transformation_matrix):
 #99_modlule_kd_important_getters.pymodule
 ####################################################################################################
 
+#test
+class Bonery_OT_keyloose(bpy.types.Operator):
+    """Operator for Bonery addon"""
+    bl_idname =  "bonery.keyloose"
+    bl_label = "Key"
 
+    def execute(self, context):      
+        key_object_loose(context)
         return {'FINISHED'}
     
     
@@ -4863,14 +3785,6 @@ class Tooldata_Renamer(bpy.types.PropertyGroup):
 
 #Function Importer
 
-
-####################################################################################################
-#functionimporttest.pymodule
-####################################################################################################
-
-def sideloadtester():
-    print("SIDELOAD Importer Module Operational!")
-    return
 #MODULE_INSTALLER_SPACE_END_00000001
 
 #region <Utility> <Methods>

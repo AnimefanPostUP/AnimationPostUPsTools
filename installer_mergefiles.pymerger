@@ -132,6 +132,8 @@ def insert_modules():
                 # Add extra line behind the module
                 lines.insert(early_index+6, "\n")
                 early_index += 7
+                
+            
             
         else:
             with open(file, "r") as source_file:
@@ -239,20 +241,16 @@ def insert_modules():
             
             for i, name in enumerate(function_names):
                 #skip if name contains execute or draw
-                if "execute" in name or "draw" in name or "invoke":
+                if "execute" in name or "draw" in name or "invoke" in name:
                     continue
                 linestring = linestring+""+f"{name}  return \t'file: " + functions_module[i] + "    line: "+ str(functionlinenumber[i]) +"'\n"
 
             linestring=linestring+"\n"
             lines_module.insert(start_ignore_index +1, linestring)
+            #insert empty line
+            lines_module.insert(start_ignore_index +2, "")
             module_file.writelines(lines_module)
-            
-            
-                                        
-                                        
-            
-            
-       
+                
             
 #run the function
 insert_modules()

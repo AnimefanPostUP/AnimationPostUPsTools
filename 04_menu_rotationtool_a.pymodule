@@ -16,9 +16,9 @@ class UVC_PT_extratools_2(uvc_extratoolpanel, bpy.types.Panel):
         layout.row().separator()
         box.label(text="Quickrotate:")   
         row=box.row()   
-        op=row.operator(UVC_Operator_rotate90DegL.bl_idname, text="Rotate L")
+        op=row.operator(UVC_Operator_rotate90DegL.bl_idname, text="Rotate L.")
         row=box.row()   
-        op=row.operator(UVC_Operator_rotate90DegR.bl_idname, text="Rotate R")
+        op=row.operator(UVC_Operator_rotate90DegR.bl_idname, text="Rotate R.")
         row=box.row()   
         
         #Create Operator to fix the rotation of the object by selected face normal
@@ -30,9 +30,29 @@ class UVC_PT_extratools_2(uvc_extratoolpanel, bpy.types.Panel):
         row=box.row()
         op=row.operator(UVC_Operator_fixRotation.bl_idname, text="X Axis")
         op.axis = 'X'
+        op.reset = False
         op=row.operator(UVC_Operator_fixRotation.bl_idname, text="Y Axis")
         op.axis = 'Y'
+        op.reset = False
         op=row.operator(UVC_Operator_fixRotation.bl_idname, text="Z Axis")
         op.axis = 'Z'
+        op.reset = False
         op=row.operator(UVC_Operator_fixRotation.bl_idname, text="All Axis")
         op.axis = 'A'
+        op.reset = False
+        
+        #Operator
+        row.label(text="Fix Rotation and Apply:")
+        row=box.row()
+        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="X Fix")
+        op.axis = 'X'
+        op.reset = True
+        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="Y Fix")
+        op.axis = 'Y'
+        op.reset = True   
+        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="Z Fix")
+        op.axis = 'Z'
+        op.reset = True
+        op=row.operator(UVC_Operator_fixRotation.bl_idname, text="All Fix")
+        op.axis = 'A'
+        op.reset = True

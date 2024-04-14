@@ -12,3 +12,6 @@ class UVC_PT_extratools_6(uvc_extratoolpanel, bpy.types.Panel):
         
         settingsdata = bpy.context.scene.ttb_settings_data
         
+        #create operator for UVC_Operator_createOptimizedUV
+        row.operator(UVC_Operator_createOptimizedUV.bl_idname, text="Optimize UVs", icon='UV')
+        

@@ -1,3 +1,8 @@
+#import treathing
+import threading
+import cupy as cp # type: ignore
+
+
 #Operator createOptimizedUV
 class UVC_Operator_createOptimizedUV(bpy.types.Operator):
     """ OPERATOR
@@ -8,7 +13,9 @@ class UVC_Operator_createOptimizedUV(bpy.types.Operator):
     
     def execute(self, context):
         bpy.ops.ed.undo_push(message="Create Optimized UV")
-        createOptimizedUV(self, context)
+        #background_thread = threading.Thread(target= createOptimizedUV, args=(self, context))
+        createOptimizedUV (self, context)
+        #background_thread.start()
         return {'FINISHED'}
 
 
@@ -37,33 +44,42 @@ def createOptimizedUV(self, context):
             if slot.material:
                 for node in slot.material.node_tree.nodes:
                     if node.type == "TEX_IMAGE":
-                        images.append(node.image)
+                        if (node.image):
+                            images.append(node.image)
                         
         #Create dicts for images, uvIslands and pixels parented to each other
         uvdict = {}
        
        
-        #convert pixels into 2 dimensional array make sure the array has the same pixel position as the uvs
-        pixels = []
-        # Get the size of one dimension (assuming the image is a square)
-        size = int(np.sqrt(len(image.pixels)))
 
-        # Convert pixels into 2 dimensional array
-        pixels = np.array(image.pixels).reshape(size, size)
-                    
-                        
                         
         # Iterate all islands
         for i, uv in enumerate(uvIslands):
             imageDict = {}
             # Iterate all images
             for image in images:
-                uvIslandDict = {}
+                uvIslandDict = {
+                    'image': image,
+                    'pixels': {}             
+                    
+                }
                 #iterate faces of the island
+                
+                
+                #convert pixels into 2 dimensional array make sure the array has the same pixel position as the uvs
+                pixels = []
+                # Get the actual dimensions of the image
+                height, width = image.size
+
+                # Convert pixels into 3 dimensional array (height, width, RGBA)
+                pixels = np.array(image.pixels).reshape(width, height, 4)
+                
+                size= height * width
+                                                
              
                 #iterate x and y of the pixels
-                for x in range(size):
-                    for y in range(size):
+                for x in range(width):
+                    for y in range(height):
                         pixelDict = {
                             'top': 0,
                             'bottom': 0,
@@ -74,27 +90,48 @@ def createOptimizedUV(self, context):
                             'average': 0,
                             
                             #3D vector
-                            'orientation': (0, 0),
+                            'orientation': {
+                                'x': 0,
+                                'y': 0
+                            },
                             'straigthness': 0
                             
                         }
-                        pixel = pixels[x][y]
+                        pixel = int (pixels[x][y][0] + pixels[x][y][1] + pixels[x][y][2]) / 3
+                        
+                        
                        
-                        #add the difference to the top , bottom , left and right pixel to a variable      
-                        top =  pixel - pixels[x][y+1] 
-                        bottom =  pixel - pixels[x][y-1]
-                        left =  pixel - pixels[x-1][y]
-                        right =  pixel - pixels[x+1][y]
+                        #add the difference to the top , bottom , left and right pixel to a variable   
+                        if y+1 < height:
+                            top =  pixel -  getpixelgrayscaled(getpixelfromArray(pixels, x, y+1))
+                        else:
+                            top = pixel  # or some other default value
+                            
+                        
+                        if y-1 >= 0:
+                            bottom =  pixel - getpixelgrayscaled(getpixelfromArray(pixels, x, y-1))
+                        else:
+                            bottom = pixel  # or some other default value
+                            
+                        if x-1 >= 0:
+                            left =  pixel - getpixelgrayscaled(getpixelfromArray(pixels, x-1, y))
+                        else:
+                            left = pixel  # or some other default value
+                            
+                        if x+1 < width:
+                            right =  pixel - getpixelgrayscaled(getpixelfromArray(pixels, x+1, y))
+                        else:
+                            right = pixel  # or some other default value
+                            
                                    
                         difference = top + bottom + left + right
                         difference = difference / 4
                         
-                        #calculate a 2d vector into the direction with the highest difference uusing math
+
                         orientation = (top - bottom, left - right)
-                        #normalize
-                        orientation = orientation / np.linalg.norm(orientation)
-                        
-                        straigthness = abs(pixel['orientation'][0] - 0.5) + abs(pixel['orientation'][1] - 0.5)
+                        norm = np.linalg.norm(orientation)
+                        orientation = (orientation[0] / norm, orientation[1] / norm)
+                        straigthness =  abs(0.5 - (abs(top) + abs(bottom) + abs(left) + abs(right)) / 4)
                         
                         #add the differences to the pixelDict
                         pixelDict['top'] = top
@@ -106,14 +143,13 @@ def createOptimizedUV(self, context):
                         pixelDict['average'] = difference
                         
                         #add the orientation to the pixelDict
-                        pixelDict['orientation'] = orientation
+                        pixelDict ['orientation'].update( {'x': orientation[0] })
+                        pixelDict['orientation'].update( {'y': orientation[1] })
                         
                         # Add the straigthness to the pixelDict
                         pixelDict['straigthness'] = straigthness
                                            
-                        pixelDict['p'+ str(x) +"/"+ str(y)] = pixelDict
-                        # Add the pixelDict to the uvIslandDict
-                        uvIslandDict['pixel'] = pixelDict
+                        uvIslandDict['pixels']['p'+ str(x) +"/"+ str(y)] = pixelDict.copy()
                         
                         
                         
@@ -123,20 +159,48 @@ def createOptimizedUV(self, context):
                     mindifference=0
                     maxdifference=0
                     
-                    for pixel in uvIslandDict['pixel']:
-                        averageOrientation += pixel['orientation']
+                    for pixdata in uvIslandDict['pixels'].values():
+                        orientationdict = pixdata['orientation']
+                        
+                        orientationx = orientationdict['x']
+                        orientationy = orientationdict['y']
+                                        
+                        #add the orientation to the average orientation
+                        averageOrientation = (averageOrientation[0] + orientationx, averageOrientation[1] + orientationy)
                         
                         #calculate how much the vectors are straight to left or right or top or bottom
                         #substract them to get how much the vectors are, the closer to 0.5 the less straight they are
                         
+                # Add the imageDict to the uvdict using update
+                uvdict.update(imageDict)
+                
+                #Create image from uvdict
+                # Create a new image
+                new_image = bpy.data.images.new("Optimized", width=size, height=size)
+                # Create a new pixels array
+                new_pixels = []
+                
+                # Iterate all pixels
+                for x in range(size):
+                    for y in range(size):
+                        # Get the pixel from the uvdict
+                        key = 'p'+ str(x) +"/"+ str(y)
+                        if key in uvdict:
+                            pixeldata = uvdict[key]
+                            new_pixels.append(pixeldata['average'])
+                        else:
+                            new_pixels.append(255)
                         
                         
                         
+                        
+def getpixelgrayscaled(pixel):
+    return int (pixel[0] + pixel[1] + pixel[2]) / 3
+
+def getpixelfromArray(array, x, y):
+    return array[x][y]
+                        
+
                     
-                    # Add the uvIslandDict to the imageDict
-                imageDict['uvIslandDict'] = uvIslandDict
-            # Add the imageDict to the uvdict using update
-            uvdict.update(imageDict)
-                   
 
                     

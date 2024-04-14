@@ -19,11 +19,20 @@ class UVC_Operator_fixRotation(bpy.types.Operator):
         default='A'
     )
     
+    #boolean called "reset"
+    reset: bpy.props.BoolProperty(
+        name="Reset",
+        description="Reset the Rotation",
+        default=False
+    )
+    
     def execute(self, ctx):
         bpy.ops.ed.undo_push(message = "Attempt Fixing Rotation")
         fixRotation(self=self, ctx=ctx)
         return {'FINISHED'}
     
+    
+
 def fixRotation(self, ctx):
     #get selected object and make sure in edit mode
     obj = bpy.context.active_object
@@ -52,6 +61,23 @@ def fixRotation(self, ctx):
     
     # Switch back to object mode
     bpy.ops.object.mode_set(mode='OBJECT')
+    
+    #save the rotations before applying the rotation
+    oldrotation = obj.rotation_euler.copy()
+    
+    if self.reset:
+        if self.reset==True:
+            #apply the rotation
+            bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+            
+            #reapply the old rotation  inverted 
+            
+            #make the euler -x -y -z
+            newrotation = Euler((-oldrotation.x, -oldrotation.y, -oldrotation.z))
+            obj.rotation_euler = newrotation
+            
+        
+    
     
     
         
