@@ -1,0 +1,172 @@
+#imports
+
+#pip install -U scikit-learn
+#pip install opencv-python
+#pip install numpy
+#pip install scikit-image
+
+
+
+import argparse
+import os
+import sys
+import json
+import concurrent.futures
+import numpy as np
+import cv2
+from sklearn.cluster import KMeans
+from scipy.ndimage import maximum_filter, minimum_filter
+
+global debugmessages
+
+def create_variation_mask(image):
+     # Convert the image to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Define the size of the neighborhood
+    neighborhood_size = 5
+
+    # Calculate the maximum and minimum values in the neighborhood for each pixel
+    max_in_neighborhood = maximum_filter(gray, size=neighborhood_size)
+    min_in_neighborhood = minimum_filter(gray, size=neighborhood_size)
+
+    # Calculate the square of the difference between the maximum and minimum values
+    diff_square = np.square(max_in_neighborhood - min_in_neighborhood)
+
+    # Normalize the transformed data
+    diff_square = cv2.normalize(diff_square, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+    
+    #blur and multiply by 3 and clamp to 255
+    diff_square = cv2.GaussianBlur(diff_square, (5, 5), 2)
+    diff_square = cv2.multiply(diff_square, 3)
+    diff_square = cv2.normalize(diff_square, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+    
+    #Treshhold black <49
+    _, diff_square = cv2.threshold(diff_square, 49, 255, cv2.THRESH_TOZERO)
+    
+    
+    
+
+
+    return diff_square
+
+def process_lines(pixels, width, height):
+    results = []
+    sections = []
+    
+    
+    # Reshape the pixel data into a 2D array
+    image = (np.array(pixels) * 255).reshape(height, width, 4).astype(np.uint8)
+    
+    imagewithoutalpha = image[:,:,:3]
+    
+    # Create a blank image of the same size
+    blank_image = np.zeros((height, width, 4), np.uint8)
+    
+    #get min and max values
+    max_val = np.amax(image)
+    min_val = np.amin(image)
+    colorcount=( max_val - min_val) //40
+    
+    
+    # Convert the image to grayscale
+    #gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+   
+   #quantize
+    mask = create_variation_mask(imagewithoutalpha)
+        
+        
+    #ED
+    returnimage=mask
+    
+    #convert image to numpy array
+    results1d = returnimage.flatten().tolist()
+    
+    numpyarray = np.array(results1d)
+    
+    #repeat the values 4 times
+    numpyarray = np.repeat(numpyarray, 4)
+    
+    numpyarray = numpyarray /255
+    
+    #make every 4th value 1
+    numpyarray[3::4] = 1
+    
+    
+    
+    #group the colors to 4
+    results1d = numpyarray.reshape(-1, 4).tolist()
+    
+    #convert the numpy array to a list
+    
+    results=[]
+    
+    #add result1d content to results without looping
+    #results.append(results1d) 
+
+            
+    return results1d
+
+
+
+def readImagePixel_subprocess_rgba(imageArray, x, y, width, height):
+    # Get the pixel index
+    pixelIndex = img_getImagePixelIndex_subprocess(x, y, width)
+
+    return (imageArray[pixelIndex+0], imageArray[pixelIndex+1], imageArray[pixelIndex+2], imageArray[pixelIndex+3])
+
+
+def getpixelgrayscaled_subprocess(pixel):
+    return int (pixel[0] + pixel[1] + pixel[2]) / 3
+        
+
+def img_getImagePixelIndex_subprocess(xt, yt, imagewidth):
+
+    
+    return (yt * imagewidth + xt)*4    
+
+
+def main():
+    
+    global debugmessages
+    debugmessages = ""
+    
+    # Get the directory of the current script
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+
+    # Path to the output file to the addons filder
+    output_path =  os.path.join(current_dir, 'output.txt')
+    
+    # Create an ArgumentParser object
+    parser = argparse.ArgumentParser(description='Process some integers.')
+    
+    # Add the arguments
+    parser.add_argument('filepath', type=str, help='The path to the file')
+    parser.add_argument('width', type=int, help='The width of the image')
+    parser.add_argument('height', type=int, help='The height of the image')
+
+    with open(sys.argv[1], 'r') as temp:
+        pixels= json.load(temp)
+        width = int(sys.argv[2])
+        height = int(sys.argv[3])
+        
+        #printdebug(len(pixels))
+
+        # Parse the arguments
+        args = parser.parse_args()
+
+        # Call your function with the arguments
+        result = process_lines(pixels, args.width, args.height)
+        #print as dict containing the debug messages and the result
+        print(result)
+        
+        
+    with open(output_path, 'w') as f:
+        f.write(debugmessages)
+
+
+# Call the main function when the script is run
+if __name__ == '__main__':
+    main()
+

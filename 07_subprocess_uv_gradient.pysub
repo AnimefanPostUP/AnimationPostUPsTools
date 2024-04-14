@@ -1,0 +1,184 @@
+#imports
+
+#pip install -U scikit-learn
+#pip install opencv-python
+#pip install numpy
+#pip install scikit-image
+
+
+
+import argparse
+import os
+import sys
+import json
+import concurrent.futures
+import numpy as np
+import cv2
+from sklearn.cluster import KMeans
+
+
+global debugmessages
+
+def create_gradient_mask(image):
+    # Convert the image to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Calculate the gradients in the x and y directions
+    grad_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=5)
+    grad_y = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=5)
+
+    # Normalize the gradients to the range 0-255
+    grad_x = cv2.normalize(grad_x, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+    grad_y = cv2.normalize(grad_y, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+
+    # Create the mask with green as the mask and red and blue for the direction of the gradient
+    directionmask = np.dstack((grad_x, gray, grad_y, np.full_like(gray, 255)))
+    
+    
+    red_channel = directionmask[:, :, 0]
+    blue_channel = directionmask[:, :, 2]
+    # Calculate the absolute difference between the red and blue channels
+    diff = np.abs(red_channel - blue_channel)
+
+    # Define a threshold for the difference
+    threshold = 10
+
+    # Create a mask where the difference is below the threshold
+    gradientmask = np.where(diff <= threshold, 255, 0).astype(np.uint8)
+    
+    # Define the size of the neighborhood
+    neighborhood_size = 4
+
+    # Create a kernel of ones with the neighborhood size
+    kernel = np.ones((neighborhood_size, neighborhood_size), np.float32)
+
+    # Convolve the gradientmask with the kernel to calculate the sum of the pixel values in the neighborhood
+    gradientmask = cv2.filter2D(gradientmask, -1, kernel)
+
+    #invert green and clamp using Binary threshhold
+    gradientmask = cv2.bitwise_not(gradientmask)
+    _, gradientmask = cv2.threshold(gradientmask, 40, 255, cv2.THRESH_TOZERO)
+    
+
+    # Overwrite the green channel of directionmask with gradientmask
+    directionmask[:,:,1] = gradientmask
+    return directionmask
+
+def process_lines(pixels, width, height):
+    
+    results = []
+    sections = []
+    
+    
+    # Reshape the pixel data into a 2D array
+    image = (np.array(pixels) * 255).reshape(height, width, 4).astype(np.uint8)
+    
+    imagewithoutalpha = image[:,:,:3]
+    
+    # Create a blank image of the same size
+    blank_image = np.zeros((height, width, 4), np.uint8)
+    
+    #get min and max values
+    max_val = np.amax(image)
+    min_val = np.amin(image)
+    colorcount=( max_val - min_val) //40
+    
+    
+    # Convert the image to grayscale
+    #gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+   
+   #quantize
+    quantized_image = create_gradient_mask(imagewithoutalpha)
+        
+        
+    #ED
+    returnimage=quantized_image
+    
+    #convert image to numpy array
+    results1d = returnimage.flatten().tolist()
+    
+    numpyarray = np.array(results1d)
+    
+    numpyarray = numpyarray /255
+    
+    #make every 4th value 1
+    numpyarray[3::4] = 1
+    
+    
+    
+    #group the colors to 4
+    results1d = numpyarray.reshape(-1, 4).tolist()
+    
+    #convert the numpy array to a list
+    
+    results=[]
+    
+    #add result1d content to results without looping
+    #results.append(results1d) 
+
+            
+    return results1d
+
+
+
+def readImagePixel_subprocess_rgba(imageArray, x, y, width, height):
+    # Get the pixel index
+    pixelIndex = img_getImagePixelIndex_subprocess(x, y, width)
+
+    return (imageArray[pixelIndex+0], imageArray[pixelIndex+1], imageArray[pixelIndex+2], imageArray[pixelIndex+3])
+
+
+def getpixelgrayscaled_subprocess(pixel):
+    return int (pixel[0] + pixel[1] + pixel[2]) / 3
+        
+
+def img_getImagePixelIndex_subprocess(xt, yt, imagewidth):
+
+    
+    return (yt * imagewidth + xt)*4    
+
+
+def main():
+    
+    global debugmessages
+    debugmessages = ""
+    
+    # Get the directory of the current script
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+
+    # Path to the output file to the addons filder
+    output_path =  os.path.join(current_dir, 'output.txt')
+    
+    # Create an ArgumentParser object
+    parser = argparse.ArgumentParser(description='Process some integers.')
+    
+    # Add the arguments
+    parser.add_argument('filepath', type=str, help='The path to the file')
+    parser.add_argument('width', type=int, help='The width of the image')
+    parser.add_argument('height', type=int, help='The height of the image')
+
+    with open(sys.argv[1], 'r') as temp:
+        pixels= json.load(temp)
+        width = int(sys.argv[2])
+        height = int(sys.argv[3])
+        
+        #printdebug(len(pixels))
+
+        # Parse the arguments
+        args = parser.parse_args()
+
+        # Call your function with the arguments
+        result = process_lines(pixels, args.width, args.height)
+        #print as dict containing the debug messages and the result
+        print(result)
+        
+        
+    with open(output_path, 'w') as f:
+        f.write(debugmessages)
+
+
+# Call the main function when the script is run
+if __name__ == '__main__':
+    main()
+

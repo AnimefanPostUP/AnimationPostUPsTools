@@ -1,0 +1,180 @@
+#imports
+import argparse
+import os
+import sys
+import json
+import concurrent.futures
+import numpy as np
+
+global debugmessages
+
+def process_average(pixels, width, height):
+    results = []
+    sections = []
+    
+    #find dividable section count starting with 10 up to 30, if not found use 10, check height and width
+
+    #for i in range(1, 1):
+        #if width % i == 0 and height % i == 0:
+            #sectioncount = i
+            #break
+
+    
+    sectioncount_x = 1
+    sectioncount_y = 5
+    
+    #find devider for y starting with a minimal height of 5
+    for i in range(50, 20):
+        if height % i == 0:
+            sectioncount_y = i
+            break
+
+    sections.clear()
+
+
+    # Calculate the sections
+    for x in range(sectioncount_x):
+        for y in range(sectioncount_y):
+        
+            x1 = 0
+            x2 = width
+            y1 = y * (height // sectioncount_y)
+            y2 = (y + 1) * (height // sectioncount_y) if y < sectioncount_y - 1 else height
+            sections.append((x1, x2, y1, y2))
+                
+   # Create a ThreadPoolExecutor
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        futures = [executor.submit(process_section_average, section, pixels, width, height) for section in sections]
+
+    # As each future completes, get the result and append it to the results list
+    results = [future.result() for future in concurrent.futures.as_completed(futures)]
+
+
+    #return the results as an 1d array
+    results1d = []
+
+    #iterate sections Loop
+    for index, section in enumerate(sections):
+        
+        #find section Loop
+        for resultsection in results:
+            
+            #Compare
+            if section==resultsection[0]:
+                
+                #iterate the pixels
+                for pixeldata in resultsection[1:]:
+                    results1d.append(pixeldata)
+                break
+            
+            
+    return results1d
+
+
+#Iteration over the section
+def process_section_average(section, pixels, width, height):
+    
+    sub_results = []
+    sub_results.append(section)
+    
+    x1, x2, y1, y2 = section
+    for y in range(y1, y2):
+        #inverted y for
+        for x in range(x1, x2):
+            sub_results.append(calculate_average_sub(width, height, x, y, pixels, 5))
+            #sub_results.append([2*x/255, 2*y/255, 1, 1])
+    
+    return sub_results 
+
+def calculate_average_sub( width, height, x, y, pixels, modifier):
+
+    average = [0, 0, 0, 1]
+
+    
+    for dy in range(0-modifier, 0+modifier):
+        for dx in range(0-modifier, 0+modifier):
+            if 0 <= x+dx < width and 0 <= y+dy < height:
+                pixel = readImagePixel_subprocess_rgba(pixels, x + dx, y + dy, width, height)
+                for i in range(4):
+                    average[i] += pixel[i]
+            else:
+                for i in range(4):
+                    #add center pixel if out of bounds
+                    average[i] += readImagePixel_subprocess_rgba(pixels, x, y, width, height)[i]
+    for i in range(4):
+        average[i] /= 9
+        
+    currentpixel= readImagePixel_subprocess_rgba(pixels, x, y, width, height)
+    
+    #compare the pixel with the average
+    for i in range(4):
+        average[i] = abs(average[i] - currentpixel[i])
+        
+    #currentpixelcolorlist = list(currentpixel) 
+    
+    #just return the pixels color
+    return average
+   
+    #return average
+
+def readImagePixel_subprocess_rgba(imageArray, x, y, width, height):
+    # Get the pixel index
+    pixelIndex = img_getImagePixelIndex_subprocess(x, y, width)
+
+    return (imageArray[pixelIndex+0], imageArray[pixelIndex+1], imageArray[pixelIndex+2], imageArray[pixelIndex+3])
+
+
+def getpixelgrayscaled_subprocess(pixel):
+    return int (pixel[0] + pixel[1] + pixel[2]) / 3
+        
+
+def img_getImagePixelIndex_subprocess(xt, yt, imagewidth):
+
+    
+    return (yt * imagewidth + xt)*4    
+
+
+def main():
+    
+    # Get the directory of the current script
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+
+    # Path to the output file to the addons filder
+    output_path =  os.path.join(current_dir, 'output.txt')
+    
+    # Create an ArgumentParser object
+    parser = argparse.ArgumentParser(description='Process some integers.')
+    
+    # Add the arguments
+    parser.add_argument('filepath', type=str, help='The path to the file')
+    parser.add_argument('width', type=int, help='The width of the image')
+    parser.add_argument('height', type=int, help='The height of the image')
+
+    with open(sys.argv[1], 'r') as temp:
+        pixels= json.load(temp)
+        width = int(sys.argv[2])
+        height = int(sys.argv[3])
+        
+        #printdebug(len(pixels))
+
+        # Parse the arguments
+        args = parser.parse_args()
+
+        # Call your function with the arguments
+        result = process_average(pixels, args.width, args.height)
+        #print as dict containing the debug messages and the result
+        print(result)
+        
+
+
+# Call the main function when the script is run
+if __name__ == '__main__':
+    main()
+    
+def printdebug(msg):
+    global debugmessages
+    if debugmessages is None:
+        debugmessages = str(msg) + "\n"
+    else:
+        debugmessages= debugmessages + str(msg) + "\n"
+    

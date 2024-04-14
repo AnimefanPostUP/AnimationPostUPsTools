@@ -1184,7 +1184,12 @@ class UVC_PT_extratools_6(uvc_extratoolpanel, bpy.types.Panel):
 ####################################################################################################
 
 #import treathing
-import threading
+from PIL import Image
+import subprocess
+import tempfile
+import json
+import numpy as np
+
 
 #Operator createOptimizedUV
 class UVC_Operator_createOptimizedUV(bpy.types.Operator):
@@ -1195,22 +1200,32 @@ class UVC_Operator_createOptimizedUV(bpy.types.Operator):
     bl_label = "Create Optimized UV"
     
     def execute(self, context):
-        bpy.ops.ed.undo_push(message="Create Optimized UV")
-        #background_thread = threading.Thread(target= createOptimizedUV, args=(self, context))
         createOptimizedUV (self, context)
-        #background_thread.start()
         return {'FINISHED'}
 
 
 def createOptimizedUV(self, context):
-    # Get active Objects
-    selected_Objects = bpy.context.selected_objects
+    
+    # Get the directory of the current script
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+
+    # Paths for scripts
+    script_path_average = os.path.join(current_dir, '07_subprocess_uv_average.pysub')
+    script_path_gradient = os.path.join(current_dir, '07_subprocess_uv_gradient.pysub')
+    script_path_lines = os.path.join(current_dir, '07_subprocess_uv_lines.pysub')
+    script_path_details = os.path.join(current_dir, '07_subprocess_uv_details.pysub')
+    script_path_edges = os.path.join(current_dir, '07_subprocess_uv_edges.pysub')
+    script_path_orientation = os.path.join(current_dir, '07_subprocess_uv_orientation.pysub')
+    script_path_text = os.path.join(current_dir, '07_subprocess_uv_text.pysub')
+    
+    # Path to the output file to the addons filder
+    output_path =  os.path.join(current_dir, 'output.txt')
 
     # Select the objects you want to rename
     selected_objects = bpy.context.selected_objects
     for obj in selected_objects:
         #cache the old uv in a list of Islands
-        uvIslands = []
+        uvIslands = []  
         for uv in obj.data.uv_layers.active.data:
             uvIslands.append(uv.uv)
             
@@ -1221,6 +1236,9 @@ def createOptimizedUV(self, context):
         #set the new uv to active
         obj.data.uv_layers.active = obj.data.uv_layers["Optimized"]
         
+        largestSize = (0, 0)
+        
+        
         #get all images that are used in the materials of the object
         images = []
         for slot in obj.material_slots:
@@ -1229,160 +1247,269 @@ def createOptimizedUV(self, context):
                     if node.type == "TEX_IMAGE":
                         if (node.image):
                             images.append(node.image)
+                            if node.image.size[0] > largestSize[0]:
+                                largestSize = (node.image.size[0], largestSize[1])
+                                
+                            if node.image.size[1] > largestSize[1]:
+                                largestSize = (largestSize[0], node.image.size[1])
                         
         #Create dicts for images, uvIslands and pixels parented to each other
         uvdict = {}
-       
-       
+        width = largestSize[0]
+        height = largestSize[1]
 
-                        
-        # Iterate all islands
-        for i, uv in enumerate(uvIslands):
-            imageDict = {}
-            # Iterate all images
-            for image in images:
-                uvIslandDict = {
-                    'image': image,
-                    'pixels': {}             
-                    
-                }
-                #iterate faces of the island
-                
-                
-                #convert pixels into 2 dimensional array make sure the array has the same pixel position as the uvs
-                pixels = []
-                # Get the actual dimensions of the image
-                height, width = image.size
+        #create array of image data with the length of the amount of images
+        image_data_list = []
 
-                # Convert pixels into 3 dimensional array (height, width, RGBA)
-                pixels = np.array(image.pixels).reshape(width, height, 4)
+        # Iterate all images
+        for index, image in enumerate(images):
+            #create non blender array of image pixel data
+            #check if image is rgb or rgba by pixelcount
+            if len(list(image.pixels)) == width * height * 4:
+                imageArray = list(image.pixels)
+            else:
+                print ("!!!resizing image to 4 channels internally!!!")
+                #convert to numpy
+                imageArray = list(image.pixels)
+                numpyarray = np.array(imageArray)
                 
-                size= height * width
-                                                
+                #reshape to 2d array with 3 channels
+                numpy2dchannneled = numpyarray.reshape(-1, 3)
+                
+                #insert alpha channel
+                numpy2dchannneled = np.insert(numpy2dchannneled, 3, 1, axis=1)
+                
+                #convert back to list using flatten
+                imageArray = numpy2dchannneled.flatten()
+                
+        #debug pixelcount
+            print ("pixelcount after reshaping?: " + str(len(imageArray)))
+                
+                
+
+                
+                
+            imageArray = list(image.pixels)
+            
+            imageAverage= createOrReturnImage(image.name+"_"+"Average", width, height)
+            imageGradient= createOrReturnImage(image.name+"_"+"Gradient", width, height)
+            imageLines= createOrReturnImage(image.name+"_"+"Lines", width, height)
+            imageDetails= createOrReturnImage(image.name+"_"+"Details", width, height)
+            imageEdges= createOrReturnImage(image.name+"_"+"Edges", width, height)
+            imageOrientation= createOrReturnImage(image.name+"_"+"Orientation", width, height)
+            imageText= createOrReturnImage(image.name+"_"+"Text", width, height)
+            
+            
+            
+            
+            #IMAGE AVERAGE OPERATION ===============================================
+            pixels = imageArray
+            width_img = width
+            height_img = height
+            #results = p.map(process_section_average, [(section, pixels) for section in sections])
+            
+            #debug image
+            print ("image: " + image.name)
+            print ("width: " + str(width_img))
+            print ("height: " + str(height_img))
+            
+            
+            #average_pixels = process_average(pixels, width_img, height_img)   
+            #create sub process of python file "07_subprocess_uv_average.pysub 
+            
+            #continue if theres no pixel
+            if pixels == "": 
+                continue
+            
+            #continue if pixels is null
+            if pixels == None:
+                continue
+            
+            # Convert the pixels to a JSON string
+            pixels_json = json.dumps(pixels)
+
+            # Create a temporary file and write the pixels to it
+            with tempfile.NamedTemporaryFile(delete=False) as temp:
+                temp.write(pixels_json.encode())
+                temp_file_name = temp.name
+
+            # Pass the name of the temporary file as an argument
+            args = [temp_file_name, str(width_img), str(height_img)]
+            
+            
+            
+            completed_process = subprocess.run(['python', script_path_average] + args, text=True, capture_output=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            #save the result of the subprocess so it doesnt get lost
+            completed_process_stdout = completed_process.stdout
+            error_process = completed_process.stderr
+            print ("error: "+error_process)
+            process_completed_process(completed_process_stdout, image, imageAverage, width_img, height_img)
+            
+            completed_process = subprocess.run(['python', script_path_gradient] + args, text=True, capture_output=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            completed_process_stdout = completed_process.stdout
+            error_process = completed_process.stderr
+            print ("error: "+error_process)
+            process_completed_process(completed_process_stdout, image, imageGradient, width_img, height_img)
              
-                #iterate x and y of the pixels
-                for x in range(width):
-                    for y in range(height):
-                        pixelDict = {
-                            'top': 0,
-                            'bottom': 0,
-                            'left': 0,
-                            'right': 0,
-                            
-                            #average difference of the top, bottom, left and right pixel
-                            'average': 0,
-                            
-                            #3D vector
-                            'orientation': {
-                                'x': 0,
-                                'y': 0
-                            },
-                            'straigthness': 0
-                            
-                        }
-                        pixel = int (pixels[x][y][0] + pixels[x][y][1] + pixels[x][y][2]) / 3
-                        
-                        
-                       
-                        #add the difference to the top , bottom , left and right pixel to a variable   
-                        if y+1 < height:
-                            top =  pixel -  getpixelgrayscaled(getpixelfromArray(pixels, x, y+1))
-                        else:
-                            top = pixel  # or some other default value
-                            
-                        
-                        if y-1 >= 0:
-                            bottom =  pixel - getpixelgrayscaled(getpixelfromArray(pixels, x, y-1))
-                        else:
-                            bottom = pixel  # or some other default value
-                            
-                        if x-1 >= 0:
-                            left =  pixel - getpixelgrayscaled(getpixelfromArray(pixels, x-1, y))
-                        else:
-                            left = pixel  # or some other default value
-                            
-                        if x+1 < width:
-                            right =  pixel - getpixelgrayscaled(getpixelfromArray(pixels, x+1, y))
-                        else:
-                            right = pixel  # or some other default value
-                            
-                                   
-                        difference = top + bottom + left + right
-                        difference = difference / 4
-                        
+            completed_process = subprocess.run(['python', script_path_lines] + args, text=True, capture_output=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            completed_process_stdout = completed_process.stdout
+            error_process = completed_process.stderr
+            print ("error: "+error_process)
+            process_completed_process(completed_process_stdout, image, imageLines, width_img, height_img)
+               
+            completed_process = subprocess.run(['python', script_path_details] + args, text=True, capture_output=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            completed_process_stdout = completed_process.stdout
+            error_process = completed_process.stderr
+            print ("error: "+error_process)
+            process_completed_process(completed_process_stdout, image, imageDetails, width_img, height_img)    
+            
+            completed_process = subprocess.run(['python', script_path_edges] + args, text=True, capture_output=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            completed_process_stdout = completed_process.stdout
+            error_process = completed_process.stderr
+            print ("error: "+error_process)
+            process_completed_process(completed_process_stdout, image, imageEdges, width_img, height_img)
+            
+            completed_process = subprocess.run(['python', script_path_orientation] + args, text=True, capture_output=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            completed_process_stdout = completed_process.stdout
+            error_process = completed_process.stderr
+            print ("error: "+error_process)
+            process_completed_process(completed_process_stdout, image, imageOrientation, width_img, height_img)
+            
+            completed_process = subprocess.run(['python', script_path_text] + args, text=True, capture_output=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            completed_process_stdout = completed_process.stdout
+            error_process = completed_process.stderr
+            print ("error: "+error_process)
+            process_completed_process(completed_process_stdout, image, imageText, width_img, height_img)            
+                  
+            
+            
+            
+            #IMAGE AVERAGE DONE =======================================================
+            image_data = ImageData(image, imageAverage, imageGradient, imageLines, imageDetails, imageEdges, imageOrientation, imageText)
+            image_data_list.append(image_data)
+            
+            # Iterate all islands
+        for i, uv in enumerate(uvIslands):
+            print("Island: " + str(i))
+       
+       
+def writeImagePixels(image, pixels):
+    #check size and resize if needed
+    if len(pixels) != image.size[0] * image.size[1] * 4:
+        image.scale(image.size[0], image.size[1])
+    image.pixels = pixels
+    return image
 
-                        orientation = (top - bottom, left - right)
-                        norm = np.linalg.norm(orientation)
-                        orientation = (orientation[0] / norm, orientation[1] / norm)
-                        straigthness =  abs(0.5 - (abs(top) + abs(bottom) + abs(left) + abs(right)) / 4)
-                        
-                        #add the differences to the pixelDict
-                        pixelDict['top'] = top
-                        pixelDict['bottom'] = bottom
-                        pixelDict['left'] = left
-                        pixelDict['right'] = right
-                        
-                        #add the average difference to the pixelDict
-                        pixelDict['average'] = difference
-                        
-                        #add the orientation to the pixelDict
-                        pixelDict ['orientation'].update( {'x': orientation[0] })
-                        pixelDict['orientation'].update( {'y': orientation[1] })
-                        
-                        # Add the straigthness to the pixelDict
-                        pixelDict['straigthness'] = straigthness
-                                           
-                        uvIslandDict['pixels']['p'+ str(x) +"/"+ str(y)] = pixelDict.copy()
-                        
-                        
-                        
-                    #cacululate the average orientation of all pixels 
-                    averageOrientation = (0, 0)
-                    straigthness=0
-                    mindifference=0
-                    maxdifference=0
-                    
-                    for pixdata in uvIslandDict['pixels'].values():
-                        orientationdict = pixdata['orientation']
-                        
-                        orientationx = orientationdict['x']
-                        orientationy = orientationdict['y']
-                                        
-                        #add the orientation to the average orientation
-                        averageOrientation = (averageOrientation[0] + orientationx, averageOrientation[1] + orientationy)
-                        
-                        #calculate how much the vectors are straight to left or right or top or bottom
-                        #substract them to get how much the vectors are, the closer to 0.5 the less straight they are
-                        
-                # Add the imageDict to the uvdict using update
-                uvdict.update(imageDict)
-                
-                #Create image from uvdict
-                # Create a new image
-                new_image = bpy.data.images.new("Optimized", width=size, height=size)
-                # Create a new pixels array
-                new_pixels = []
-                
-                # Iterate all pixels
-                for x in range(size):
-                    for y in range(size):
-                        # Get the pixel from the uvdict
-                        key = 'p'+ str(x) +"/"+ str(y)
-                        if key in uvdict:
-                            pixeldata = uvdict[key]
-                            new_pixels.append(pixeldata['average'])
-                        else:
-                            new_pixels.append(255)
-                        
-                        
+def createImageFromPixels(pixels, width, height, name):
+    # Create a new image
+    image = createOrReturnImage(name, width, height)
+    # Set the pixels
+    image.pixels = pixels
+    return image
+
+def readImagePixel_INT(imageArray, x, y, width, height):
+    # Get the pixel index
+    pixelIndex = img_getImagePixelIndex(x, y, width)
+
+    return (imageArray[pixelIndex+0], imageArray[pixelIndex+1], imageArray[pixelIndex+2], imageArray[pixelIndex+3])
+
+def createOrReturnImage (name, width, height):
+    if name in bpy.data.images:
+        return bpy.data.images[name]
+    else: 
+        return bpy.data.images.new(name, width=width, height=height, )   
+
                         
                         
 def getpixelgrayscaled(pixel):
     return int (pixel[0] + pixel[1] + pixel[2]) / 3
 
-def getpixelfromArray(array, x, y):
-    return array[x][y]
-                        
+def img_getImagePixelIndex(xt, yt, imagewidth):
+
+    
+    return (yt * imagewidth + xt)*4    
+
+def unpackImageArray(imageArray, width, height):
+    unpacked = []
+    for y in range(height):
+        for x in range(width):
+            pixel = readImagePixel_INT(imageArray, x, y, width, height)
+            unpacked.append(pixel)
+    return unpacked
+def process_completed_process(completed_process, sourceimage, targetimage, width_img, height_img):
+    pixellist_data = completed_process
+    #print first 20 lines
+    print ("prejson: "+pixellist_data[:4])
+    
+    #return empty image if no data
+    if pixellist_data == "":
+        print("nodata")
+        return
+    
+    pixellist_data = json.loads(pixellist_data)
+    
+
+    
+    
+    print ("name: " +targetimage.name)
+    
+    #print type
+    print ("type: "+ str(type(pixellist_data)))
+    
+    #print size
+    print ("len:"+ str(len(pixellist_data)))
+    
+    #print first 30 lines
+    print (pixellist_data[:4])
+    
+    average_pixels=[]
+    
+    print (len(pixellist_data))
+    for pixels in pixellist_data:
+        if type(pixels) != list:
+            print ("typePD: "+ str(type(pixels)))
+            #print ("DEBUG:"+ str(pixels) )
+            continue
+        for pixelcolor in pixels:
+            if type(pixelcolor) != float:
+                print ("typePC: "+ str(type(pixelcolor)))
+                continue
+            average_pixels.append(pixelcolor)
+    
+    print ("result len: " + str(len(average_pixels)))
+    
+    
+    
+    if average_pixels == "":
+        return
+    
+    writeImagePixels(targetimage, createImageFromPixels(average_pixels, int (width_img), int (height_img), sourceimage.name+"_"+targetimage.name).pixels)
+    
+
+                           
+#Create class that stored the images average, orientation, straigthness, text and gradient
+class ImageData:
+    def __init__(self, mainimage, imageAverage, imageGradient, imageLines, imageDetails, imageEdges, imageOrientation, imageText):
+        self.mainimage = mainimage
+        self.imageAverage = imageAverage
+        self.imageGradient = imageGradient
+        self.imageLines = imageLines
+        self.imageDetails = imageDetails
+        self.imageEdges = imageEdges
+        self.imageOrientation = imageOrientation
+        self.imageText = imageText
+
+        
+
+                     
+#!!! this section is moved to the subprocess file !!!
+
+    
+
+
+    
+
+    
 
                     
 
