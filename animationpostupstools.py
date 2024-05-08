@@ -1155,6 +1155,63 @@ class UVC_PT_extratools_5(uvc_extratoolpanel, bpy.types.Panel):
 #06_menu_renamer_op.pymodule
 ####################################################################################################
 
+    
+class UVC_Operator_rename(bpy.types.Operator):
+    """ OPERATOR
+    Adds a Panel
+    """
+    bl_idname = "anifanpostuptools.rename"
+    bl_label = "Rename"
+
+    PreFix: bpy.props.StringProperty(name="Prefix", default="")
+    Suffix: bpy.props.StringProperty(name="Suffix", default="") 
+    Suffix_Sub: bpy.props.StringProperty(name="Suffix Sub", default="")
+    
+    def execute(self, context):
+        bpy.ops.ed.undo_push(message="Rename")
+        rename (self=self, context=context)
+        return {'FINISHED'}
+    
+   
+def rename(self, context):
+    # Get active Objects
+    selected_Objects = bpy.context.selected_objects
+
+    # Get Prefix and Suffix from Operator
+    prefix = self.PreFix
+    suffix = self.Suffix
+    suffix_Sub = self.Suffix_Sub
+
+    prefixIsSet = False
+    suffixIsSet = False
+    suffix_SubIsSet = False
+
+    if not prefix == "":
+        prefixIsSet = True
+
+    if not suffix == "":
+        suffixIsSet = True
+
+    if not suffix_Sub == "":
+        suffix_SubIsSet = True
+
+    # Select the objects you want to rename
+    selected_objects = bpy.context.selected_objects
+    for obj in selected_objects:
+        new_name = prefix if prefixIsSet else ""
+        if suffixIsSet:
+            new_name += f"_{suffix}" if prefixIsSet else suffix
+        if suffix_SubIsSet:
+            new_name += f"_{suffix_Sub}" if new_name else suffix_Sub
+        obj.name = recursive_rename(new_name, 1, "_")
+        #search if object with name exists
+
+        
+def recursive_rename(name, increment, incrementspacer):   
+    if bpy.data.objects.get(name + incrementspacer + str(increment).zfill(2)):
+        return recursive_rename(name, increment+1, incrementspacer)
+    else :
+        return name + incrementspacer + str(increment).zfill(2)
 
 
 ####################################################################################################
@@ -1189,6 +1246,7 @@ import subprocess
 import tempfile
 import json
 import numpy as np
+import asyncio
 
 
 #Operator createOptimizedUV
@@ -1202,6 +1260,18 @@ class UVC_Operator_createOptimizedUV(bpy.types.Operator):
     def execute(self, context):
         createOptimizedUV (self, context)
         return {'FINISHED'}
+    
+async def run_script(script_path, args, image, targetimage, width_img, height_img):
+    process = await asyncio.create_subprocess_exec('python', script_path, *args,
+                                                   stdout=asyncio.subprocess.PIPE,
+                                                   stderr=asyncio.subprocess.PIPE)
+
+    stdout, stderr = await process.communicate()
+
+    if stderr:
+        print("Error:", stderr.decode())
+
+    process_completed_process(stdout.decode(), image, targetimage, width_img, height_img)
 
 
 def createOptimizedUV(self, context):
@@ -1262,7 +1332,47 @@ def createOptimizedUV(self, context):
         image_data_list = []
 
         # Iterate all images
-        for index, image in enumerate(images):
+        for index, image_loop in enumerate(images):
+            print("starting image: " + image_loop.name)
+            #scale image to 1024x1024
+            
+            
+            print("creating dummy image...")
+            #create 1024x1024 image
+            image =bpy.data.images.new(image_loop.name+"_1024", width=1024, height=1024)
+            
+            print("creating thumbnail using PIL...")
+            #loading blender iamge to PIL
+            image_pil = Image.open(image_loop.filepath)
+            
+            print("resizing image...")
+            #resize image to 1024x1024
+            image_pil.thumbnail((1024, 1024))
+            
+        
+            
+            print("converting to RGBA...")
+            #add alpha if not exists
+            #check pixelcount
+            if len(list(image_pil.getdata())) == width * height * 3:
+                #add alpha channel using numpy
+                imageArray = np.insert(np.array(image_pil), 3, 255, axis=1)
+            
+            print("converting to numpy array...")
+            #convert to numpy array
+            imageArray = np.array(image_pil)
+            
+            print("flattening array...")
+            #flatten the array
+            imageArray = imageArray.flatten()
+            
+            print("setting pixels to image...")
+            #set the pixels to the image
+            image.pixels = imageArray
+            
+            print("staring image processing...")
+            
+            
             #create non blender array of image pixel data
             #check if image is rgb or rgba by pixelcount
             if len(list(image.pixels)) == width * height * 4:
@@ -1282,7 +1392,7 @@ def createOptimizedUV(self, context):
                 #convert back to list using flatten
                 imageArray = numpy2dchannneled.flatten()
                 
-        #debug pixelcount
+            #debug pixelcount
             print ("pixelcount after reshaping?: " + str(len(imageArray)))
                 
                 
@@ -1361,49 +1471,66 @@ def createOptimizedUV(self, context):
                 #wait
             '''
             #'''
+            print ("Starting average image")
             completed_process = subprocess.run(['python', script_path_average] + args, text=True, capture_output=True, creationflags=subprocess.CREATE_NEW_CONSOLE)  
             #save the result of the subprocess so it doesnt get lost
             completed_process_stdout = completed_process.stdout
             error_process = completed_process.stderr
             print ("error: "+error_process)
             process_completed_process(completed_process_stdout, image, imageAverage, width_img, height_img)
+            print ("Average image done")
             
+            print ( "Starting gradient image")    
             completed_process = subprocess.run(['python', script_path_gradient] + args, text=True, capture_output=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
             completed_process_stdout = completed_process.stdout
             error_process = completed_process.stderr
             print ("error: "+error_process)
             process_completed_process(completed_process_stdout, image, imageGradient, width_img, height_img)
-             
+            print ("Gradient image done")
+            
+            print ("Starting lines image")
             completed_process = subprocess.run(['python', script_path_lines] + args, text=True, capture_output=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
             completed_process_stdout = completed_process.stdout
             error_process = completed_process.stderr
             print ("error: "+error_process)
             process_completed_process(completed_process_stdout, image, imageLines, width_img, height_img)
+            print ("Lines image done")
                
+            print ("Starting details image")
             completed_process = subprocess.run(['python', script_path_details] + args, text=True, capture_output=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
             completed_process_stdout = completed_process.stdout
             error_process = completed_process.stderr
             print ("error: "+error_process)
             process_completed_process(completed_process_stdout, image, imageDetails, width_img, height_img)    
+            print ( "Details image done")
             
+            print ("Starting edges image")
             completed_process = subprocess.run(['python', script_path_edges] + args, text=True, capture_output=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
             completed_process_stdout = completed_process.stdout
             error_process = completed_process.stderr
             print ("error: "+error_process)
             process_completed_process(completed_process_stdout, image, imageEdges, width_img, height_img)
+            print ("Edges image done")
+
             
+            print("Starting orientation image")
             completed_process = subprocess.run(['python', script_path_orientation] + args, text=True, capture_output=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
             completed_process_stdout = completed_process.stdout
             error_process = completed_process.stderr
             print ("error: "+error_process)
             process_completed_process(completed_process_stdout, image, imageOrientation, width_img, height_img)
+            print("Orientation image done")
             
+            print("Starting text image") 
             completed_process = subprocess.run(['python', script_path_text] + args, text=True, capture_output=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
             completed_process_stdout = completed_process.stdout
             error_process = completed_process.stderr
             print ("error: "+error_process)
-            process_completed_process(completed_process_stdout, image, imageText, width_img, height_img)            
+            process_completed_process(completed_process_stdout, image, imageText, width_img, height_img)   
+            print("Text image done")         
             #'''      
+            
+            
             
             
             
@@ -1467,59 +1594,35 @@ def unpackImageArray_np(imageArray, width, height):
 
 def process_completed_process(completed_process, sourceimage, targetimage, width_img, height_img):
     pixellist_data = completed_process
-    #print first 20 lines
-    print ("prejson: "+pixellist_data[:4])
-    
-    #return empty image if no data
+
     if pixellist_data == "":
         print("nodata")
         return
     
+    print("loading json data...")
     pixellist_data = json.loads(pixellist_data)
-    
 
-    
-    
-    print ("name: " +targetimage.name)
-    
-    #print type
-    print ("type: "+ str(type(pixellist_data)))
-    
-    #print size
-    print ("len:"+ str(len(pixellist_data)))
-    
     #print first 30 lines
-    print (pixellist_data[:4])
+    #print (pixellist_data[:4])
     
     average_pixels=[]
-    
-    ''' 
-    print (len(pixellist_data))
-    for pixels in pixellist_data:
-        if type(pixels) != list:
-            print ("typePD: "+ str(type(pixels)))
-            #print ("DEBUG:"+ str(pixels) )
-            continue
-        for pixelcolor in pixels:
-            if type(pixelcolor) != float:
-                print ("typePC: "+ str(type(pixelcolor)))
-                continue
-            average_pixels.append(pixelcolor)
-    
-    print ("result len: " + str(len(average_pixels)))
-    ''' 
-    
-        
-        
-    # Convert the list to a NumPy array
+      
+    print("converting to numpy array...")    
     pixellist_data_np = np.array(pixellist_data)
 
+    print("Flatten and correcting array")
     # Flatten the array and filter out non-float values
-    average_pixels = pixellist_data_np.ravel()[np.isreal(pixellist_data_np.ravel())]
-
-    print(f"Initial length: {len(pixellist_data)}, Result length: {len(average_pixels)}")
+    #average_pixels = pixellist_data_np.ravel()[np.isreal(pixellist_data_np.ravel())]
+    #flat the array 
+    average_pixels = pixellist_data_np.flatten()
     
-    writeImagePixels(targetimage, createImageFromPixels(average_pixels, int (width_img), int (height_img), sourceimage.name+"_"+targetimage.name).pixels)
+    #convert to list
+    print("Converting to List...")
+    average_pixels = average_pixels.tolist()
+    
+    print("Writing Image...")
+    newimage= createImageFromPixels(average_pixels, int (width_img), int (height_img), sourceimage.name+"_"+targetimage.name)
+    #writeImagePixels(targetimage, .pixels)
     
 
                            
@@ -1534,6 +1637,83 @@ class ImageData:
         self.imageEdges = imageEdges
         self.imageOrientation = imageOrientation
         self.imageText = imageText
+        
+class IslandData:
+    def __init__(self,  averagestrength, gradientstrength, gradientdirection, linestrength, linedirection, detailsstrength, edgesstrength, colortype):
+        self.averagestrength=averagestrength      
+        self.gradientstrength=gradientstrength       
+        self.gradientdirection=gradientdirection
+        self.linestrength=linestrength
+        self.linedirection=linedirection
+        self.detailsstrength=detailsstrength
+        self.edgesstrength=edgesstrength
+        self.colortype=colortype
+              
+def getPixelsOfIsland(self, image):
+    #get the pixels of the island
+    pixels = []
+    for uv in self.uvIslands:
+        x = int(uv[0] * image.size[0])
+        y = int(uv[1] * image.size[1])
+        pixel = image.pixels[img_getImagePixelIndex(x, y, image.size[0])]
+        pixels.append(pixel)
+    return pixels
+
+def calculate_average_strength(self, pixels):
+    #calculate the average strength of the island
+    average = 0
+    for pixel in pixels:
+        average += getpixelgrayscaled(pixel)
+    return average / len(pixels)
+
+def calculate_gradient_strength(self, pixels):
+    #calculate the gradient strength of the island
+    gradient = 0
+    for i in range(len(pixels) - 1):
+        gradient += abs(getpixelgrayscaled(pixels[i]) - getpixelgrayscaled(pixels[i + 1]))
+    return gradient / len(pixels)
+
+def calculate_gradient_direction(self, pixels):
+    #calculate the gradient direction of the island
+    gradient = 0
+    for i in range(len(pixels) - 1):
+        gradient += abs(getpixelgrayscaled(pixels[i]) - getpixelgrayscaled(pixels[i + 1]))
+    return gradient / len(pixels)
+
+def calculate_line_strength(self, pixels):
+    #calculate the line strength of the island
+    line = 0
+    for i in range(len(pixels) - 1):
+        line += abs(getpixelgrayscaled(pixels[i]) - getpixelgrayscaled(pixels[i + 1]))
+    return line / len(pixels)
+
+def calculate_line_direction(self, pixels):
+    #calculate the line direction of the island
+    line = 0
+    for i in range(len(pixels) - 1):
+        line += abs(getpixelgrayscaled(pixels[i]) - getpixelgrayscaled(pixels[i + 1]))
+    return line / len(pixels)
+
+def calculate_details_strength(self, pixels):
+    #calculate the details strength of the island
+    details = 0
+    for i in range(len(pixels) - 1):
+        details += abs(getpixelgrayscaled(pixels[i]) - getpixelgrayscaled(pixels[i + 1]))
+    return details / len(pixels)
+
+def calculate_edges_strength(self, pixels):
+    #calculate the edges strength of the island
+    edges = 0
+    for i in range(len(pixels) - 1):
+        edges += abs(getpixelgrayscaled(pixels[i]) - getpixelgrayscaled(pixels[i + 1]))
+    return edges / len(pixels)
+
+def calculate_color_type(self, pixels):
+    #calculate the color type of the island
+    color = 0
+    for i in range(len(pixels) - 1):
+        color += abs(getpixelgrayscaled(pixels[i]) - getpixelgrayscaled(pixels[i + 1]))
+    return color / len(pixels)
 
         
 

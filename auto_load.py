@@ -26,11 +26,14 @@ def init():
     print("started loading")
     modules = get_all_submodules(Path(__file__).parent)
     ordered_classes = get_ordered_classes_to_register(modules)
-
+    
 def register():
     print("register autoloads")
     for cls in ordered_classes:
-        bpy.utils.register_class(cls)
+        try:
+            bpy.utils.register_class(cls)
+        except Exception as e:
+            print(f"Failed to register {cls}: {e}")
 
     for module in modules:
         if module.__name__ == __name__:
@@ -40,14 +43,16 @@ def register():
 
 def unregister():
     for cls in reversed(ordered_classes):
-        bpy.utils.unregister_class(cls)
+        try:
+            bpy.utils.unregister_class(cls)
+        except Exception as e:
+            print(f"Failed to unregister {cls}: {e}")
 
     for module in modules:
         if module.__name__ == __name__:
             continue
         if hasattr(module, "unregister"):
             module.unregister()
-
 
 # Import modules
 #################################################

@@ -36,6 +36,7 @@ def process_lines(pixels, width, height):
     if lines is not None:
     # Draw the lines on the blank image
         for line in lines:
+            
             x1, y1, x2, y2 = line[0]
             
             
@@ -151,7 +152,7 @@ def main():
         args = parser.parse_args()
 
         # Call your function with the arguments
-        result = process_lines(pixels, args.width, args.height)
+        result = process_lines(pixels, width, height)
         #print as dict containing the debug messages and the result
         print(result)
         

@@ -1,0 +1,68 @@
+#blender function to generate UVs
+
+def generateUVs(averagefilter, detailfilter, edgefilter, gradientfilter, linesfilter, orientationfilter, textfiler):
+    #get the current selected object
+    obj = bpy.context.active_object
+    
+    #create weight variable for each filter
+    averagefilter = 0.1
+    detailfilter = 0.1
+    edgefilter = 0.1
+    gradientfilter = 0.1
+    linesfilter = 0.1
+    orientationfilter = 0.1
+    textfiler = 0.1
+    
+    #get the uv
+    uv = obj.data.uv_layers.active.data
+    
+    #get the vertices
+    verts = obj.data.vertices
+    
+    #iterate uv islands
+    for island in obj.data.uv_layers:
+        
+        scale = 1.0
+        orientation = 0.0
+        colorgroup = 0.0
+        
+        #iterate uv faces
+        for face in island.data:
+            
+            #iterate pixels
+            for pixel in face.pixels:
+                
+                #apply filters
+                pixel *= averagefilter
+                pixel *= detailfilter
+                pixel *= edgefilter
+                pixel *= gradientfilter
+                pixel *= linesfilter
+                pixel *= orientationfilter
+                pixel *= textfiler
+                
+                #apply scale
+                pixel *= scale
+                
+                #apply orientation
+                pixel *= orientation
+                
+                #apply colorgroup
+                pixel *= colorgroup
+                
+                #iterate uv loops
+                for loop in face.loop_indices:
+                    #get the vertex
+                    vert = verts[obj.data.loops[loop].vertex_index]
+                    #get the uv
+                    uv[loop].uv = (vert.co.x, vert.co.y)
+            
+            
+            #iterate uv loops
+            for loop in face.loop_indices:
+                #get the vertex
+                vert = verts[obj.data.loops[loop].vertex_index]
+                #get the uv
+                uv[loop].uv = (vert.co.x, vert.co.y)
+
+    

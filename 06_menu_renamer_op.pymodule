@@ -1,0 +1,57 @@
+    
+class UVC_Operator_rename(bpy.types.Operator):
+    """ OPERATOR
+    Adds a Panel
+    """
+    bl_idname = "anifanpostuptools.rename"
+    bl_label = "Rename"
+
+    PreFix: bpy.props.StringProperty(name="Prefix", default="")
+    Suffix: bpy.props.StringProperty(name="Suffix", default="") 
+    Suffix_Sub: bpy.props.StringProperty(name="Suffix Sub", default="")
+    
+    def execute(self, context):
+        bpy.ops.ed.undo_push(message="Rename")
+        rename (self=self, context=context)
+        return {'FINISHED'}
+    
+   
+def rename(self, context):
+    # Get active Objects
+    selected_Objects = bpy.context.selected_objects
+
+    # Get Prefix and Suffix from Operator
+    prefix = self.PreFix
+    suffix = self.Suffix
+    suffix_Sub = self.Suffix_Sub
+
+    prefixIsSet = False
+    suffixIsSet = False
+    suffix_SubIsSet = False
+
+    if not prefix == "":
+        prefixIsSet = True
+
+    if not suffix == "":
+        suffixIsSet = True
+
+    if not suffix_Sub == "":
+        suffix_SubIsSet = True
+
+    # Select the objects you want to rename
+    selected_objects = bpy.context.selected_objects
+    for obj in selected_objects:
+        new_name = prefix if prefixIsSet else ""
+        if suffixIsSet:
+            new_name += f"_{suffix}" if prefixIsSet else suffix
+        if suffix_SubIsSet:
+            new_name += f"_{suffix_Sub}" if new_name else suffix_Sub
+        obj.name = recursive_rename(new_name, 1, "_")
+        #search if object with name exists
+
+        
+def recursive_rename(name, increment, incrementspacer):   
+    if bpy.data.objects.get(name + incrementspacer + str(increment).zfill(2)):
+        return recursive_rename(name, increment+1, incrementspacer)
+    else :
+        return name + incrementspacer + str(increment).zfill(2)
